@@ -5,6 +5,7 @@ if (typeof AFRAME === 'undefined') {
 // Components
 require('./components/motion-capture-recorder.js');
 require('./components/motion-capture-player.js');
+require('./components/stroke.js');
 
 // Systems
 require('./systems/motion-capture-recorder.js');
