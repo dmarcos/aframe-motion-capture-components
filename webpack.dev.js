@@ -4,6 +4,7 @@ var PLUGINS = [];
 
 if (process.env.NODE_ENV === 'production') {
   PLUGINS.push(new webpack.optimize.UglifyJsPlugin());
+  outputFilename = 'examples/js/build.js';
 }
 
 module.exports = {
