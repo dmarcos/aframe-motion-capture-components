@@ -1,7 +1,8 @@
 /* global THREE AFRAME  */
 AFRAME.registerComponent('stroke', {
   schema: {
-    enabled: {default: true}
+    enabled: {default: true},
+    color: {default: '#ef2d5e', type: 'color'}
   },
 
   init: function () {
@@ -23,7 +24,7 @@ AFRAME.registerComponent('stroke', {
     this.geometry.addAttribute('normal', new THREE.BufferAttribute(this.normals, 3).setDynamic(true));
 
     this.material = new THREE.MeshStandardMaterial({
-      color: '#ef2d5e',
+      color: this.data.color,
       roughness: 0.75,
       metalness: 0.25,
       side: THREE.DoubleSide
@@ -39,10 +40,16 @@ AFRAME.registerComponent('stroke', {
     this.el.sceneEl.appendChild(strokeEl);
   },
 
+  update: function() {
+    this.material.color.set(this.data.color);
+  },
+
   drawPoint: (function () {
     var direction = new THREE.Vector3();
     var positionA = new THREE.Vector3();
     var positionB = new THREE.Vector3();
+    var directionA = new THREE.Vector3();
+    var directionB = new THREE.Vector3();
     return function (position, orientation, timestamp, pointerPosition) {
       var uv = 0;
       var numPoints = this.numPoints;

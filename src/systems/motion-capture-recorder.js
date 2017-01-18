@@ -53,6 +53,20 @@ AFRAME.registerSystem('motion-capture-recorder', {
     return stroke;
   },
 
+  getPointerPosition: (function () {
+    var pointerPosition = new THREE.Vector3();
+    var offset = new THREE.Vector3(0, 0.7, 1);
+    return function getPointerPosition (position, orientation) {
+      var pointer = offset
+        .clone()
+        .applyQuaternion(orientation)
+        .normalize()
+        .multiplyScalar(-0.03);
+      pointerPosition.copy(position).add(pointer);
+      return pointerPosition;
+    };
+  })(),
+
   getJSON: function () {
     // Strokes
     var json = {
@@ -64,6 +78,20 @@ AFRAME.registerSystem('motion-capture-recorder', {
       json.strokes.push(this.strokes[i].getJSON(this));
     }
     return json;
+  },
+
+  getStrokeJSON: function (stroke) {
+    var point;
+    var points = [];
+    for (var i = 0; i < stroke.length; i++) {
+      point = stroke[i];
+      points.push({
+        'rotation': point.rotation.toArray(),
+        'position': point.position.toArray(),
+        'timestamp': point.timestamp
+      });
+    }
+    return JSON.stringify(points);
   },
 
   getBinary: function () {
@@ -111,43 +139,29 @@ AFRAME.registerSystem('motion-capture-recorder', {
     return binaryManager.getDataView();
   },
 
-  getPointerPosition: (function () {
-    var pointerPosition = new THREE.Vector3();
-    var offset = new THREE.Vector3(0, 0.7, 1);
-    return function getPointerPosition (position, orientation) {
-      var pointer = offset
-        .clone()
-        .applyQuaternion(orientation)
-        .normalize()
-        .multiplyScalar(-0.03);
-      pointerPosition.copy(position).add(pointer);
-      return pointerPosition;
-    };
-  })(),
-
   loadJSON: function (data) {
+    var strokeData;
     if (data.version !== VERSION) {
       console.error('Invalid version: ', version, '(Expected: ' + VERSION + ')');
     }
-
     for (var i = 0; i < data.strokes.length; i++) {
-      var strokeData = data.strokes[i];
-
-      var stroke = this.addNewStroke();
-
-      for (var j = 0; j < strokeData.points.length; j++) {
-        var point = strokeData.points[j];
-
-        var position = new THREE.Vector3().fromArray(point.position);
-        var orientation = new THREE.Quaternion().fromArray(point.orientation);
-        var timestamp = point.timestamp;
-        stroke.push({
-          position: position,
-          rotation: rotation,
-          timestamp: timestamp
-        });
-      }
+      strokeData = data.strokes[i];
+      this.loadStrokeJSON(data.strokes[i]);
     }
+  },
+
+  loadStrokeJSON: function (data) {
+    var stroke = this.addNewStroke();
+    var point;
+    for (var i = 0; i < data.length; i++) {
+      point = data[i];
+      stroke.push({
+        position: new THREE.Vector3().fromArray(point.position),
+        rotation: new THREE.Vector3().fromArray(point.rotation),
+        timestamp: point.timestamp
+      });
+    }
+    return stroke;
   },
 
   loadBinary: function (buffer) {
@@ -164,7 +178,6 @@ AFRAME.registerSystem('motion-capture-recorder', {
     }
 
     var numStrokes = binaryManager.readUint32();
-
     for (var l = 0; l < numStrokes; l++) {
       var numPoints = binaryManager.readUint32();
       var stroke = this.addNewStroke();
@@ -181,15 +194,27 @@ AFRAME.registerSystem('motion-capture-recorder', {
     }
   },
 
+  loadStrokeFromUrl: function (url, binary, callback) {
+    var loader = new THREE.XHRLoader(this.manager);
+    var self = this;
+    var stroke;
+    loader.crossOrigin = 'anonymous';
+    if (binary === true) { loader.setResponseType('arraybuffer'); }
+    loader.load(url, function (buffer) {
+      if (binary === true) {
+        stroke = self.loadStrokeBinary(buffer);
+      } else {
+        stroke = self.loadStrokeJSON(JSON.parse(buffer));
+      }
+      if (callback) { callback(stroke); }
+    });
+  },
+
   loadFromUrl: function (url, binary) {
     var loader = new THREE.XHRLoader(this.manager);
-    loader.crossOrigin = 'anonymous';
-    if (binary === true) {
-      loader.setResponseType('arraybuffer');
-    }
-
     var self = this;
-
+    loader.crossOrigin = 'anonymous';
+    if (binary === true) { loader.setResponseType('arraybuffer'); }
     loader.load(url, function (buffer) {
       if (binary === true) {
         self.loadBinary(buffer);

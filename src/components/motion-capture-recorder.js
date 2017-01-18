@@ -15,44 +15,6 @@ AFRAME.registerComponent('motion-capture-recorder', {
     el.addEventListener('buttonchanged', this.onTriggerChanged.bind(this));
   },
 
-  getMaterial: function () {
-    var map = this.materialOptions.map;
-    var type = this.materialOptions.type;
-
-    var defaultOptions = {};
-    var defaultTextureOptions = {};
-    if (map) {
-      defaultTextureOptions = {
-        map: map,
-        transparent: true,
-        alphaTest: 0.5
-      };
-    }
-
-    if (type === 'shaded') {
-      defaultOptions = {
-        color: this.data.color,
-        roughness: 0.75,
-        metalness: 0.25,
-        side: THREE.DoubleSide
-      };
-    } else {
-      defaultOptions = {
-        color: this.data.color,
-        side: THREE.DoubleSide
-      };
-    }
-
-    var options = Object.assign(defaultOptions, defaultTextureOptions, this.materialOptions);
-    delete options.type;
-
-    if (type === 'shaded') {
-      return new THREE.MeshStandardMaterial(options);
-    } else {
-      return new THREE.MeshBasicMaterial(options);
-    }
-  },
-
   onTriggerChanged: function (evt) {
     var value;
     if (!this.data.enabled) { return; }
@@ -60,10 +22,32 @@ AFRAME.registerComponent('motion-capture-recorder', {
     if (evt.detail.id !== 1) { return; }
     value = evt.detail.state.value;
     if (value <= 0.1) {
-      if (this.currentStroke) { this.finishStroke(); }
+      if (this.recordingStroke) { this.finishStroke(); }
       return;
     }
-    if (!this.currentStroke) { this.startNewStroke(); }
+    if (!this.recordingStroke) { this.startNewStroke(); }
+  },
+
+  getStrokeJSON: function () {
+    if (!this.currentStroke) { return; }
+    return this.system.getStrokeJSON(this.currentStroke);
+  },
+
+  saveCapture: function () {
+    var jsonStroke = this.getStrokeJSON();
+    var blob = new Blob([jsonStroke], {type: "application/json"});
+    var url = URL.createObjectURL(blob);
+    var fileName = 'motion-capture-' + document.title + '-' + Date.now() + '.json';
+    var aEl = document.createElement('a');
+    aEl.href = url;
+    aEl.setAttribute('download', fileName);
+    aEl.innerHTML = 'downloading...';
+    aEl.style.display = 'none';
+    document.body.appendChild(aEl);
+    setTimeout(function () {
+      aEl.click();
+      document.body.removeChild(aEl);
+    }, 1);
   },
 
   update: function () {
@@ -82,18 +66,17 @@ AFRAME.registerComponent('motion-capture-recorder', {
     return function (time, delta) {
       var newPoint;
       var pointerPosition;
-      if (this.currentStroke && this.data.enabled) {
-        this.el.object3D.matrixWorld.decompose(position, rotation, scale);
-        newPoint = {
-          position: position.clone(),
-          rotation: rotation.clone(),
-          timestamp: time
-        };
-        this.currentStroke.push(newPoint);
-        pointerPosition = this.getPointerPosition(position, rotation);
-        if (!this.data.visibleStroke) { return; }
-        this.el.components.stroke.drawPoint(newPoint.position, newPoint.rotation, newPoint.timestamp, pointerPosition);
-      }
+      if (!this.data.enabled || !this.recordingStroke) { return; }
+      this.el.object3D.matrixWorld.decompose(position, rotation, scale);
+      newPoint = {
+        position: position.clone(),
+        rotation: rotation.clone(),
+        timestamp: time
+      };
+      this.currentStroke.push(newPoint);
+      pointerPosition = this.getPointerPosition(position, rotation);
+      if (!this.data.visibleStroke) { return; }
+      this.el.components.stroke.drawPoint(newPoint.position, newPoint.rotation, newPoint.timestamp, pointerPosition);
     };
   })(),
 
@@ -114,6 +97,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
   startNewStroke: function () {
     var el = this.el;
     el.components.stroke.reset();
+    this.recordingStroke = true;
     this.currentStroke = this.system.addNewStroke();
     el.emit('strokestarted', {entity: el, stroke: this.currentStroke});
   },
@@ -121,7 +105,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
   finishStroke: function () {
     var el = this.el;
     el.emit('strokeended', {stroke: this.currentStroke});
-    this.currentStroke = null;
+    this.recordingStroke = false;
     if (this.data.persistStroke) { return; }
     el.components.stroke.reset();
   }

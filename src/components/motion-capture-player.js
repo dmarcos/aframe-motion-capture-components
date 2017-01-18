@@ -2,7 +2,8 @@
 AFRAME.registerComponent('motion-capture-player', {
   schema: {
     enabled: {default: true},
-    recorderEl: {type: 'selector'}
+    recorderEl: {type: 'selector'},
+    src: {default: '/assets/motion-capture-test.json'}
   },
 
   init: function () {
@@ -11,28 +12,53 @@ AFRAME.registerComponent('motion-capture-player', {
   },
 
   update: function (oldData) {
-    var recorderEl = this.data.recorderEl;
-    var oldRecorderEl = oldData.recorderEl;
-    if (oldRecorderEl && oldRecorderEl !== recorderEl) {
-      oldData.recorderEl.removeEventListener('strokestarted', this.onStrokeStarted);
-      oldData.recorderEl.removeEventListener('strokeended', this.onStrokeEnded);
+    var data = this.data;
+    this.updateRecorder(data.recorderEl, oldData.recorderEl);
+    if (oldData.src === data.src) { return; }
+    if (data.src) { this.updateSrc(data.src); }
+  },
+
+  updateRecorder: function (newRecorderEl, oldRecorderEl) {
+    if (oldRecorderEl && oldRecorderEl !== newRecorderEl) {
+      oldRecorderEl.removeEventListener('strokestarted', this.onStrokeStarted);
+      oldRecorderEl.removeEventListener('strokeended', this.onStrokeEnded);
     }
-    if (oldRecorderEl === recorderEl) { return; }
-    recorderEl.addEventListener('strokestarted', this.onStrokeStarted);
-    recorderEl.addEventListener('strokeended', this.onStrokeEnded);
+    if (!newRecorderEl || oldRecorderEl === newRecorderEl) { return; }
+    newRecorderEl.addEventListener('strokestarted', this.onStrokeStarted);
+    newRecorderEl.addEventListener('strokeended', this.onStrokeEnded);
+  },
+
+  updateSrc: function (src) {
+    var self = this;
+    this.el.sceneEl.systems['motion-capture-recorder'].loadStrokeFromUrl(src, false, loaded);
+    function loaded (stroke) {
+      self.playStroke(stroke);
+    }
   },
 
   onStrokeStarted: function(evt) {
-    this.playingStroke = null;
-    // Reset player
-    this.currentTime = undefined;
-    this.currentPoseIndex = undefined;
+    this.reset();
   },
 
   onStrokeEnded: function(evt) {
-    this.playingStroke = evt.detail.stroke;
-    this.currentTime = this.playingStroke[0].timestamp;
+    this.playStroke(evt.detail.stroke);
+  },
+
+  play: function () {
+    if (this.playingStroke) { this.playStroke(this.playingStroke); }
+  },
+
+  playStroke: function (stroke) {
+    this.playingStroke = stroke;
+    this.currentTime = stroke.timestamp;
     this.currentPoseIndex = 0;
+  },
+
+  // Reset player
+  reset: function () {
+    this.playingStroke = null;
+    this.currentTime = undefined;
+    this.currentPoseIndex = undefined;
   },
 
   applyPose: (function(pose) {
