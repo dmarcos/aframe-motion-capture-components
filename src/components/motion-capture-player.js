@@ -3,7 +3,8 @@ AFRAME.registerComponent('motion-capture-player', {
   schema: {
     enabled: {default: true},
     recorderEl: {type: 'selector'},
-    src: {default: '/assets/motion-capture-test.json'}
+    loop: {default: true},
+    src: {default: ''}
   },
 
   init: function () {
@@ -30,9 +31,10 @@ AFRAME.registerComponent('motion-capture-player', {
 
   updateSrc: function (src) {
     var self = this;
-    this.el.sceneEl.systems['motion-capture-recorder'].loadStrokeFromUrl(src, false, loaded);
-    function loaded (stroke) {
-      self.playStroke(stroke);
+    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, loaded);
+    function loaded (data) {
+      self.startPlayPoses(data.poses);
+      self.startPlayEvents(data.events);
     }
   },
 
@@ -41,22 +43,33 @@ AFRAME.registerComponent('motion-capture-player', {
   },
 
   onStrokeEnded: function(evt) {
-    this.playStroke(evt.detail.stroke);
+    this.startPlayPoses(evt.detail.poses);
   },
 
   play: function () {
     if (this.playingStroke) { this.playStroke(this.playingStroke); }
   },
 
-  playStroke: function (stroke) {
-    this.playingStroke = stroke;
-    this.currentTime = stroke.timestamp;
+  startPlayPoses: function (poses) {
+    if (poses.length === 0) { return; }
+    this.playingPoses = poses;
+    this.currentPoseTime = poses[0].timestamp;
     this.currentPoseIndex = 0;
+  },
+
+  startPlayEvents: function (events) {
+    var firstEvent;
+    if (events.length === 0) { return; }
+    firstEvent = events[0];
+    this.playingEvents = events;
+    this.currentEventTime = firstEvent.timestamp;
+    this.currentEventIndex = 0;
+    this.el.emit(firstEvent.name, {id: firstEvent.id, state: firstEvent.state});
   },
 
   // Reset player
   reset: function () {
-    this.playingStroke = null;
+    this.playingPoses = null;
     this.currentTime = undefined;
     this.currentPoseIndex = undefined;
   },
@@ -71,29 +84,43 @@ AFRAME.registerComponent('motion-capture-player', {
     }
   })(),
 
-  tick: (function () {
-    var position = new THREE.Vector3();
-    var rotation = new THREE.Quaternion();
-    var scale = new THREE.Vector3();
+  playPoses: function (delta) {
+    var currentPose;
+    var playingPoses = this.playingPoses;
+    if (!playingPoses || this.currentPoseIndex === playingPoses.length) { return; }
+    currentPose = playingPoses[this.currentPoseIndex]
+    this.applyPose(currentPose);
+    this.currentPoseTime += delta;
+    // determine next pose
+    if (this.currentPoseTime >= currentPose.timestamp) {
+      this.currentPoseIndex += 1;
+      if (this.currentPoseIndex === playingPoses.length && this.data.loop) {
+        this.currentPoseIndex = 0;
+        this.currentPoseTime = playingPoses[0].timestamp;
+      }
+    }
+  },
 
-    return function (time, delta) {
-      var currentTime;
-      var currentPose;
-      var playingStroke = this.playingStroke;
-      if (!playingStroke) { return; }
-      if (!this.currentTime) {
-        this.currentTime = playingStroke[0].timestamp;
-      } else {
-        this.currentTime += delta;
+  playEvents: function (delta) {
+    var currentEvent;
+    var playingEvents = this.playingEvents;
+    if (!playingEvents || this.currentEventIndex === playingEvents.length) { return; }
+    currentEvent = this.playingEvents[this.currentEventIndex];
+    this.currentEventTime += delta;
+    // determine next event
+    if (this.currentEventTime >= currentEvent.timestamp) {
+      this.currentEventIndex += 1;
+      if (this.currentEventIndex === playingEvents.length && this.data.loop) {
+        this.currentEventIndex = 0;
+        this.currentEventTime = playingEvents[0].timestamp;
       }
-      if (this.currentTime >= this.playingStroke[this.currentPoseIndex].timestamp) {
-        this.currentPoseIndex += 1;
-        if (this.currentPoseIndex === playingStroke.length) {
-          this.currentPoseIndex = 0;
-          this.currentTime = playingStroke[0].timestamp;
-        }
-      }
-      this.applyPose(playingStroke[this.currentPoseIndex]);
-    };
-  })(),
+      currentEvent = this.playingEvents[this.currentEventIndex];
+      this.el.emit(currentEvent.name, {id: currentEvent.id, state: currentEvent.state});
+    }
+  },
+
+  tick:  function (time, delta) {
+    this.playPoses(delta);
+    this.playEvents(delta);
+  }
 });

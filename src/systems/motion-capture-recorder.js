@@ -27,7 +27,7 @@ AFRAME.registerSystem('motion-capture-recorder', {
     for (var l = 0; l < numStrokes; l++) {
       var numPoints = parseInt(Math.random() * 500);
 
-      var stroke = this.addNewStroke();
+      var stroke = [];
 
       var position = new THREE.Vector3(randNeg(), randNeg(), randNeg());
       var aux = new THREE.Vector3();
@@ -47,10 +47,8 @@ AFRAME.registerSystem('motion-capture-recorder', {
     }
   },
 
-  addNewStroke: function () {
-    var stroke = [];
+  saveStroke: function (stroke) {
     this.strokes.push(stroke);
-    return stroke;
   },
 
   getPointerPosition: (function () {
@@ -86,12 +84,12 @@ AFRAME.registerSystem('motion-capture-recorder', {
     for (var i = 0; i < stroke.length; i++) {
       point = stroke[i];
       points.push({
-        'rotation': point.rotation.toArray(),
-        'position': point.position.toArray(),
-        'timestamp': point.timestamp
+        rotation: point.rotation.toArray(),
+        position: point.position.toArray(),
+        timestamp: point.timestamp
       });
     }
-    return JSON.stringify(points);
+    return points;
   },
 
   getBinary: function () {
@@ -150,8 +148,15 @@ AFRAME.registerSystem('motion-capture-recorder', {
     }
   },
 
+  loadDataJSON: function (data) {
+    return {
+      poses: this.loadStrokeJSON(data.poses),
+      events: data.events
+    }
+  },
+
   loadStrokeJSON: function (data) {
-    var stroke = this.addNewStroke();
+    var stroke = [];
     var point;
     for (var i = 0; i < data.length; i++) {
       point = data[i];
@@ -180,7 +185,7 @@ AFRAME.registerSystem('motion-capture-recorder', {
     var numStrokes = binaryManager.readUint32();
     for (var l = 0; l < numStrokes; l++) {
       var numPoints = binaryManager.readUint32();
-      var stroke = this.addNewStroke();
+      var stroke = [];
       for (var i = 0; i < numPoints; i++) {
         var position = binaryManager.readVector3();
         var orientation = binaryManager.readQuaternion();
@@ -194,19 +199,19 @@ AFRAME.registerSystem('motion-capture-recorder', {
     }
   },
 
-  loadStrokeFromUrl: function (url, binary, callback) {
+  loadRecordingFromUrl: function (url, binary, callback) {
     var loader = new THREE.XHRLoader(this.manager);
     var self = this;
-    var stroke;
+    var data;
     loader.crossOrigin = 'anonymous';
     if (binary === true) { loader.setResponseType('arraybuffer'); }
     loader.load(url, function (buffer) {
       if (binary === true) {
-        stroke = self.loadStrokeBinary(buffer);
+        data = self.loadStrokeBinary(buffer);
       } else {
-        stroke = self.loadStrokeJSON(JSON.parse(buffer));
+        data = self.loadDataJSON(JSON.parse(buffer));
       }
-      if (callback) { callback(stroke); }
+      if (callback) { callback(data); }
     });
   },
 
