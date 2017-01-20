@@ -84,8 +84,8 @@ AFRAME.registerSystem('motion-capture-recorder', {
     for (var i = 0; i < stroke.length; i++) {
       point = stroke[i];
       points.push({
-        rotation: point.rotation.toArray(),
-        position: point.position.toArray(),
+        position: point.position,
+        rotation: point.rotation,
         timestamp: point.timestamp
       });
     }
@@ -148,27 +148,6 @@ AFRAME.registerSystem('motion-capture-recorder', {
     }
   },
 
-  loadDataJSON: function (data) {
-    return {
-      poses: this.loadStrokeJSON(data.poses),
-      events: data.events
-    }
-  },
-
-  loadStrokeJSON: function (data) {
-    var stroke = [];
-    var point;
-    for (var i = 0; i < data.length; i++) {
-      point = data[i];
-      stroke.push({
-        position: new THREE.Vector3().fromArray(point.position),
-        rotation: new THREE.Vector3().fromArray(point.rotation),
-        timestamp: point.timestamp
-      });
-    }
-    return stroke;
-  },
-
   loadBinary: function (buffer) {
     var binaryManager = new BinaryManager(buffer);
     var magic = binaryManager.readString();
@@ -209,7 +188,7 @@ AFRAME.registerSystem('motion-capture-recorder', {
       if (binary === true) {
         data = self.loadStrokeBinary(buffer);
       } else {
-        data = self.loadDataJSON(JSON.parse(buffer));
+        data = JSON.parse(buffer);
       }
       if (callback) { callback(data); }
     });

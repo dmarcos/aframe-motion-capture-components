@@ -30,12 +30,7 @@ AFRAME.registerComponent('motion-capture-player', {
   },
 
   updateSrc: function (src) {
-    var self = this;
-    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, loaded);
-    function loaded (data) {
-      self.startPlayPoses(data.poses);
-      self.startPlayEvents(data.events);
-    }
+    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startPlaying.bind(this));
   },
 
   onStrokeStarted: function(evt) {
@@ -43,27 +38,33 @@ AFRAME.registerComponent('motion-capture-player', {
   },
 
   onStrokeEnded: function(evt) {
-    this.startPlayPoses(evt.detail.poses);
+    this.startPlayingPoses(evt.detail.poses);
   },
 
   play: function () {
     if (this.playingStroke) { this.playStroke(this.playingStroke); }
   },
 
-  startPlayPoses: function (poses) {
+  startPlaying: function (data) {
+    this.isPlaying = true;
+    this.startPlayingPoses(data.poses);
+    this.startPlayingEvents(data.events);
+  },
+
+  startPlayingPoses: function (poses) {
+    this.currentPoseIndex = 0;
     if (poses.length === 0) { return; }
     this.playingPoses = poses;
     this.currentPoseTime = poses[0].timestamp;
-    this.currentPoseIndex = 0;
   },
 
-  startPlayEvents: function (events) {
+  startPlayingEvents: function (events) {
     var firstEvent;
+    this.currentEventIndex = 0;
     if (events.length === 0) { return; }
     firstEvent = events[0];
     this.playingEvents = events;
     this.currentEventTime = firstEvent.timestamp;
-    this.currentEventIndex = 0;
     this.el.emit(firstEvent.name, {id: firstEvent.id, state: firstEvent.state});
   },
 
@@ -74,53 +75,48 @@ AFRAME.registerComponent('motion-capture-player', {
     this.currentPoseIndex = undefined;
   },
 
-  applyPose: (function(pose) {
-    var euler = new THREE.Euler();
-    return function (pose) {
-      var el = this.el;
-      euler.setFromQuaternion(pose.rotation);
-      el.setAttribute('position', pose.position);
-      el.setAttribute('rotation', euler);
-    }
-  })(),
-
-  playPoses: function (delta) {
-    var currentPose;
-    var playingPoses = this.playingPoses;
-    if (!playingPoses || this.currentPoseIndex === playingPoses.length) { return; }
-    currentPose = playingPoses[this.currentPoseIndex]
-    this.applyPose(currentPose);
-    this.currentPoseTime += delta;
-    // determine next pose
-    if (this.currentPoseTime >= currentPose.timestamp) {
-      this.currentPoseIndex += 1;
-      if (this.currentPoseIndex === playingPoses.length && this.data.loop) {
-        this.currentPoseIndex = 0;
-        this.currentPoseTime = playingPoses[0].timestamp;
-      }
-    }
+  applyPose:  function (pose) {
+    var el = this.el;
+    el.setAttribute('position', pose.position);
+    el.setAttribute('rotation', pose.rotation);
   },
 
-  playEvents: function (delta) {
-    var currentEvent;
+  playRecording: function (delta) {
+    var currentPose;
+    var currentEvent
+    var playingPoses = this.playingPoses;
     var playingEvents = this.playingEvents;
-    if (!playingEvents || this.currentEventIndex === playingEvents.length) { return; }
-    currentEvent = this.playingEvents[this.currentEventIndex];
+    currentPose = playingPoses && playingPoses[this.currentPoseIndex]
+    currentEvent = playingEvents && playingEvents[this.currentEventIndex];
+    this.currentPoseTime += delta;
     this.currentEventTime += delta;
-    // determine next event
-    if (this.currentEventTime >= currentEvent.timestamp) {
-      this.currentEventIndex += 1;
-      if (this.currentEventIndex === playingEvents.length && this.data.loop) {
-        this.currentEventIndex = 0;
-        this.currentEventTime = playingEvents[0].timestamp;
+    // determine next pose
+    while ((currentPose && this.currentPoseTime >= currentPose.timestamp) ||
+           (currentEvent && this.currentPoseTime >= currentEvent.timestamp)) {
+      // pose
+      if (currentPose && this.currentPoseTime >= currentPose.timestamp) {
+        if (this.currentPoseIndex === playingPoses.length && this.data.loop) {
+          this.currentPoseIndex = 0;
+          this.currentPoseTime = playingPoses[0].timestamp;
+        }
+        this.applyPose(currentPose);
+        this.currentPoseIndex += 1;
+        currentPose = playingPoses[this.currentPoseIndex];
       }
-      currentEvent = this.playingEvents[this.currentEventIndex];
-      this.el.emit(currentEvent.name, {id: currentEvent.id, state: currentEvent.state});
+      // event
+      if (currentEvent && this.currentPoseTime >= currentEvent.timestamp) {
+        if (this.currentEventIndex === playingEvents.length && this.data.loop) {
+          this.currentEventIndex = 0;
+          this.currentEventTime = playingEvents[0].timestamp;
+        }
+        this.el.emit(currentEvent.name, {id: currentEvent.detail.id});
+        this.currentEventIndex += 1;
+        currentEvent = this.playingEvents[this.currentEventIndex];
+      }
     }
   },
 
   tick:  function (time, delta) {
-    this.playPoses(delta);
-    this.playEvents(delta);
+    if (this.isPlaying) { this.playRecording(delta); }
   }
 });
