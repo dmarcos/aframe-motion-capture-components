@@ -12,13 +12,23 @@ AFRAME.registerComponent('avatar-player', {
   },
 
   updateSrc: function (src) {
-    var self = this;
     this.loadRecordingFromUrl(src, false, this.startPlaying.bind(this));
   },
 
+  /**
+   * Set player on camera and controllers (marked by ID).
+   *
+   * @params {object} data - {
+   *   camera: {poses: [], events: []},
+   *   [c1ID]: {poses: [], events: []},
+   *   [c2ID]: {poses: [], events: []}
+   * }
+   */
   startPlaying: function (data) {
     var self = this;
-    var keys = Object.keys(data);
+    var puppetEl;
+    var sceneEl = this.el;
+
     this.recordingData = data;
     this.isPlaying = true;
     if (!this.el.camera) {
@@ -27,16 +37,18 @@ AFRAME.registerComponent('avatar-player', {
       });
       return;
     }
-    keys.forEach(function (key) {
+
+    Object.keys(data).forEach(function setPlayer (key) {
       if (key === 'camera') {
-        self.el.camera.el.setAttribute('motion-capture-player', {loop: self.data.loop});
-        self.el.camera.el.components['motion-capture-player'].startPlaying(data.camera);
-      } else {
-        el = document.querySelector('#' + key);
-        if (!el) { console.warn('Avatar Player: No element with id ' + key); }
-        el.setAttribute('motion-capture-player', {loop: self.data.loop});
-        el.components['motion-capture-player'].startPlaying(data[key]);
+        sceneEl.camera.el.setAttribute('motion-capture-player', {loop: false});
+        sceneEl.camera.el.components['motion-capture-player'].startPlaying(data.camera);
+        return;
       }
+
+      puppetEl = sceneEl.querySelector('#' + key);
+      if (!puppetEl) { console.warn('Avatar Player: No element with id ' + key); }
+      puppetEl.setAttribute('motion-capture-player', {loop: false});
+      puppetEl.components['motion-capture-player'].startPlaying(data[key]);
     });
   },
 

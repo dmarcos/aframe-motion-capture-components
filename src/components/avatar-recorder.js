@@ -9,10 +9,10 @@ AFRAME.registerComponent('avatar-recorder', {
 
   init: function () {
     var self = this;
-    this.trackedControllersEls = {};
+    this.trackedControllerEls = {};
     this.onKeyDown = this.onKeyDown.bind(this);
     this.tick = AFRAME.utils.throttle(this.throttledTick, 100, this);
-    this.el.addEventListener('camera-ready', function (evt) {
+    this.el.addEventListener('camera-set-active', function (evt) {
       self.cameraEl = evt.detail.cameraEl;
       self.cameraEl.setAttribute('motion-capture-recorder', {autoStart: true, visibleStroke: false});
     });
@@ -34,17 +34,20 @@ AFRAME.registerComponent('avatar-recorder', {
     avatarPlayer.stopPlaying();
   },
 
-  throttledTick: function() {
+  /**
+   * Poll for tracked contorllers.
+   */
+  throttledTick: function () {
     var self = this;
-    var trackedControllersEls = document.querySelectorAll('[tracked-controls]');
-    trackedControllersEls.forEach(function (trackedControllerEl) {
+    var trackedControllerEls = this.el.querySelectorAll('[tracked-controls]');
+    trackedControllerEls.forEach(function (trackedControllerEl) {
       if (!trackedControllerEl.id) {
         console.warn('Player Recorder: Found tracked controllers with no id. It will not be recorded');
         return;
       }
-      if (self.trackedControllersEls[trackedControllerEl.id]) { return; }
+      if (self.trackedControllerEls[trackedControllerEl.id]) { return; }
       trackedControllerEl.setAttribute('motion-capture-recorder', {autoStart: true, visibleStroke: false});
-      self.trackedControllersEls[trackedControllerEl.id] = trackedControllerEl;
+      self.trackedControllerEls[trackedControllerEl.id] = trackedControllerEl;
       if (this.isRecording) { trackedControllerEl.components['motion-capture-recorder'].startRecording(); }
     });
   },
@@ -100,25 +103,25 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   startRecording: function () {
-    var trackedControllersEls = this.trackedControllersEls;
-    var keys = Object.keys(trackedControllersEls);
+    var trackedControllerEls = this.trackedControllerEls;
+    var keys = Object.keys(trackedControllerEls);
     if (this.isRecording) { return; }
     this.stopPlayRecording();
     this.isRecording = true;
     this.cameraEl.components['motion-capture-recorder'].startRecording();
     keys.forEach(function (id) {
-      trackedControllersEls[id].components['motion-capture-recorder'].startRecording();
+      trackedControllerEls[id].components['motion-capture-recorder'].startRecording();
     });
   },
 
   stopRecording: function () {
-    var trackedControllersEls = this.trackedControllersEls;
-    var keys = Object.keys(trackedControllersEls);
+    var trackedControllerEls = this.trackedControllerEls;
+    var keys = Object.keys(trackedControllerEls);
     if (!this.isRecording) { return; }
     this.isRecording = false;
     this.cameraEl.components['motion-capture-recorder'].stopRecording();
     keys.forEach(function (id) {
-      trackedControllersEls[id].components['motion-capture-recorder'].stopRecording();
+      trackedControllerEls[id].components['motion-capture-recorder'].stopRecording();
     });
     this.saveRecording();
     if (this.data.autoPlay) { this.playRecording(); }
@@ -126,13 +129,13 @@ AFRAME.registerComponent('avatar-recorder', {
 
   getJSONData: function () {
     var data = {};
-    var trackedControllersEls = this.trackedControllersEls;
-    var keys = Object.keys(trackedControllersEls);
+    var trackedControllerEls = this.trackedControllerEls;
+    var keys = Object.keys(trackedControllerEls);
     if (this.isRecording) { return; }
     this.isRecording = false;
     data.camera = this.cameraEl.components['motion-capture-recorder'].getJSONData();
     keys.forEach(function (id) {
-      data[id] = trackedControllersEls[id].components['motion-capture-recorder'].getJSONData();
+      data[id] = trackedControllerEls[id].components['motion-capture-recorder'].getJSONData();
     });
     this.recordingData = data;
     return data;

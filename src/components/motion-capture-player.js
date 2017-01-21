@@ -1,4 +1,4 @@
-/* global THREE AFRAME  */
+/* global AFRAME, THREE */
 AFRAME.registerComponent('motion-capture-player', {
   schema: {
     enabled: {default: true},
@@ -8,9 +8,15 @@ AFRAME.registerComponent('motion-capture-player', {
   },
 
   init: function () {
+    this.currentPoseTime = 0;
+    this.currentEventTime = 0;
+    this.currentPoseIndex = 0;
+    this.currentEventIndex = 0;
     this.onStrokeStarted = this.onStrokeStarted.bind(this);
     this.onStrokeEnded = this.onStrokeEnded.bind(this);
     this.discardedFrames = 0;
+    this.playingEvents = [];
+    this.playingPoses = [];
   },
 
   update: function (oldData) {
@@ -50,7 +56,6 @@ AFRAME.registerComponent('motion-capture-player', {
   },
 
   startPlaying: function (data) {
-    this.isPlaying = true;
     this.ignoredFrames = 0;
     this.storeInitialPose();
     this.startPlayingPoses(data.poses);
@@ -78,6 +83,7 @@ AFRAME.registerComponent('motion-capture-player', {
   },
 
   startPlayingPoses: function (poses) {
+    this.isPlaying = true;
     this.currentPoseIndex = 0;
     this.playingPoses = poses;
     this.currentPoseTime = poses[0].timestamp;
@@ -85,12 +91,13 @@ AFRAME.registerComponent('motion-capture-player', {
 
   startPlayingEvents: function (events) {
     var firstEvent;
+    this.isPlaying = true;
     this.currentEventIndex = 0;
     this.playingEvents = events;
     firstEvent = events[0];
     if (!firstEvent) { return; }
     this.currentEventTime = firstEvent.timestamp;
-    this.el.emit(firstEvent.name, {id: firstEvent.id, state: firstEvent.state});
+    this.el.emit(firstEvent.name, firstEvent.detail);
   },
 
   // Reset player
@@ -98,12 +105,6 @@ AFRAME.registerComponent('motion-capture-player', {
     this.playingPoses = null;
     this.currentTime = undefined;
     this.currentPoseIndex = undefined;
-  },
-
-  applyPose:  function (pose) {
-    var el = this.el;
-    el.setAttribute('position', pose.position);
-    el.setAttribute('rotation', pose.rotation);
   },
 
   playRecording: function (delta) {
@@ -115,24 +116,22 @@ AFRAME.registerComponent('motion-capture-player', {
     currentEvent = playingEvents && playingEvents[this.currentEventIndex];
     this.currentPoseTime += delta;
     this.currentEventTime += delta;
-    // determine next pose
-    while (currentPose && this.currentPoseTime >= currentPose.timestamp) {
-      // pose
-      if (currentPose && this.currentPoseTime >= currentPose.timestamp) {
-        if (this.currentPoseIndex === playingPoses.length - 1 && this.data.loop) {
-          this.restart();
-        }
-        this.applyPose(currentPose);
-        this.currentPoseIndex += 1;
-        currentPose = playingPoses[this.currentPoseIndex];
-      }
 
-      // event
-      if (currentEvent && this.currentPoseTime >= currentEvent.timestamp) {
-        this.el.emit(currentEvent.name, {id: currentEvent.detail.id});
-        this.currentEventIndex += 1;
-        currentEvent = this.playingEvents[this.currentEventIndex];
+    // Poses.
+    while (currentPose && this.currentPoseTime >= currentPose.timestamp) {
+      if (this.data.loop && this.currentPoseIndex === playingPoses.length - 1) {
+        this.restart();
       }
+      applyPose(this.el, currentPose);
+      this.currentPoseIndex += 1;
+      currentPose = playingPoses[this.currentPoseIndex];
+    }
+
+    // Events.
+    while (currentEvent && this.currentEventTime >= currentEvent.timestamp) {
+      this.el.emit(currentEvent.name, currentEvent.detail);
+      this.currentEventIndex += 1;
+      currentEvent = this.playingEvents[this.currentEventIndex];
     }
   },
 
@@ -145,10 +144,19 @@ AFRAME.registerComponent('motion-capture-player', {
 
   tick:  function (time, delta) {
     var deltaTime;
-    if (this.ignoredFrames !== 2) {
+
+    // Ignore the first couple of frames that come from window.RAF on Firefox.
+    if (this.ignoredFrames !== 2 && !window.debug) {
       this.ignoredFrames++;
       return;
     }
-    if (this.isPlaying) { this.playRecording(delta); }
+
+    if (!this.isPlaying) { return; }
+    this.playRecording(delta);
   }
 });
+
+function applyPose (el, pose) {
+  el.setAttribute('position', pose.position);
+  el.setAttribute('rotation', pose.rotation);
+};
