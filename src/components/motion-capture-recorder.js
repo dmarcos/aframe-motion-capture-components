@@ -83,8 +83,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
     var el = this.el;
     var data = this.data;
     if (this.data.autoStart) {
-      console.log('autostart');
-      //this.startRecording();
+      this.startRecording();
     } else {
       el.setAttribute('vive-controls', {hand: data.hand});
       el.setAttribute('oculus-touch-controls', {hand: data.hand});
@@ -109,8 +108,10 @@ AFRAME.registerComponent('motion-capture-recorder', {
       };
       this.recordedPoses.push(newPoint);
       if (!this.data.visibleStroke) { return; }
+      this.el.object3D.updateMatrixWorld();
+      this.el.object3D.matrixWorld.decompose(position, rotation, scale);
       pointerPosition = this.getPointerPosition(position, rotation);
-      this.el.components.stroke.drawPoint(newPoint.position, newPoint.rotation, newPoint.timestamp, pointerPosition);
+      this.el.components.stroke.drawPoint(position, rotation, time, pointerPosition);
     };
   })(),
 

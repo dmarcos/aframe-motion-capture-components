@@ -10,6 +10,7 @@ AFRAME.registerComponent('motion-capture-player', {
   init: function () {
     this.onStrokeStarted = this.onStrokeStarted.bind(this);
     this.onStrokeEnded = this.onStrokeEnded.bind(this);
+    this.discardedFrames = 0;
   },
 
   update: function (oldData) {
@@ -38,22 +39,46 @@ AFRAME.registerComponent('motion-capture-player', {
   },
 
   onStrokeEnded: function(evt) {
-    this.startPlayingPoses(evt.detail.poses);
+    this.startPlaying({
+      poses: evt.detail.poses,
+      events: []
+    });
   },
 
   play: function () {
-    if (this.playingStroke) { this.playStroke(this.playingStroke); }
+    if (this.playingStroke) { this.startPlaying(this.playingStroke); }
   },
 
   startPlaying: function (data) {
     this.isPlaying = true;
+    this.ignoredFrames = 0;
+    this.storeInitialPose();
     this.startPlayingPoses(data.poses);
     this.startPlayingEvents(data.events);
   },
 
+  stopPlaying: function () {
+    this.isPlaying = false;
+    this.restoreInitialPose();
+  },
+
+  storeInitialPose: function () {
+    var el = this.el;
+    this.initialPose = {
+      position: el.getAttribute('position'),
+      rotation: el.getAttribute('rotation')
+    };
+  },
+
+  restoreInitialPose: function () {
+    var el = this.el;
+    if (!this.initialPose) { return; }
+    el.setAttribute('position', this.initialPose.position);
+    el.setAttribute('rotation', this.initialPose.rotation);
+  },
+
   startPlayingPoses: function (poses) {
     this.currentPoseIndex = 0;
-    if (poses.length === 0) { return; }
     this.playingPoses = poses;
     this.currentPoseTime = poses[0].timestamp;
   },
@@ -61,9 +86,9 @@ AFRAME.registerComponent('motion-capture-player', {
   startPlayingEvents: function (events) {
     var firstEvent;
     this.currentEventIndex = 0;
-    if (events.length === 0) { return; }
-    firstEvent = events[0];
     this.playingEvents = events;
+    firstEvent = events[0];
+    if (!firstEvent) { return; }
     this.currentEventTime = firstEvent.timestamp;
     this.el.emit(firstEvent.name, {id: firstEvent.id, state: firstEvent.state});
   },
@@ -91,24 +116,19 @@ AFRAME.registerComponent('motion-capture-player', {
     this.currentPoseTime += delta;
     this.currentEventTime += delta;
     // determine next pose
-    while ((currentPose && this.currentPoseTime >= currentPose.timestamp) ||
-           (currentEvent && this.currentPoseTime >= currentEvent.timestamp)) {
+    while (currentPose && this.currentPoseTime >= currentPose.timestamp) {
       // pose
       if (currentPose && this.currentPoseTime >= currentPose.timestamp) {
-        if (this.currentPoseIndex === playingPoses.length && this.data.loop) {
-          this.currentPoseIndex = 0;
-          this.currentPoseTime = playingPoses[0].timestamp;
+        if (this.currentPoseIndex === playingPoses.length - 1 && this.data.loop) {
+          this.restart();
         }
         this.applyPose(currentPose);
         this.currentPoseIndex += 1;
         currentPose = playingPoses[this.currentPoseIndex];
       }
+
       // event
       if (currentEvent && this.currentPoseTime >= currentEvent.timestamp) {
-        if (this.currentEventIndex === playingEvents.length && this.data.loop) {
-          this.currentEventIndex = 0;
-          this.currentEventTime = playingEvents[0].timestamp;
-        }
         this.el.emit(currentEvent.name, {id: currentEvent.detail.id});
         this.currentEventIndex += 1;
         currentEvent = this.playingEvents[this.currentEventIndex];
@@ -116,7 +136,19 @@ AFRAME.registerComponent('motion-capture-player', {
     }
   },
 
+  restart: function () {
+    this.currentPoseIndex = 0;
+    this.currentPoseTime = this.playingPoses[0].timestamp;
+    this.currentEventIndex = 0;
+    this.currentEventTime = this.playingEvents[0] ? this.playingEvents[0].timestamp : 0;
+  },
+
   tick:  function (time, delta) {
+    var deltaTime;
+    if (this.ignoredFrames !== 2) {
+      this.ignoredFrames++;
+      return;
+    }
     if (this.isPlaying) { this.playRecording(delta); }
   }
 });

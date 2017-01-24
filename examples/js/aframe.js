@@ -62358,8 +62358,12 @@ module.exports.Component = registerComponent('vive-controls', {
     var data = this.data;
     // handId: 0 - right, 1 - left, 2 - anything else...
     var controller = data.hand === 'right' ? 0 : data.hand === 'left' ? 1 : 2;
+    var objUrl = VIVE_CONTROLLER_MODEL_OBJ_URL;
+    var mtlUrl = VIVE_CONTROLLER_MODEL_OBJ_MTL;
     // if we have an OpenVR Gamepad, use the fixed mapping
     el.setAttribute('tracked-controls', {id: GAMEPAD_ID_PREFIX, controller: controller, rotationOffset: data.rotationOffset});
+    if (!this.data.model) { return; }
+    this.el.setAttribute('obj-model', {obj: objUrl, mtl: mtlUrl});
   },
 
   addControllersUpdateListener: function () {
@@ -62398,8 +62402,6 @@ module.exports.Component = registerComponent('vive-controls', {
     buttonMeshes.trigger = controllerObject3D.getObjectByName('trigger');
     // Offset pivot point
     controllerObject3D.position.set(0, -0.015, 0.04);
-    if (!this.data.model) { return; }
-    this.el.setAttribute('obj-model', {obj: objUrl, mtl: mtlUrl});
   },
 
   onButtonEvent: function (id, evtName) {
@@ -66128,9 +66130,7 @@ module.exports = registerElement('a-scene', {
       value: function (time) {
         var effect = this.effect;
         var timeDelta = time - this.time;
-
         if (this.isPlaying) { this.tick(time, timeDelta); }
-
         this.animationFrameID = effect.requestAnimationFrame(this.render);
         effect.render(this.object3D, this.camera);
         this.time = time;

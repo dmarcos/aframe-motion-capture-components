@@ -1,7 +1,10 @@
 /* global THREE AFRAME  */
 AFRAME.registerComponent('avatar-recorder', {
   schema: {
-    autoStart: {default: false}
+    autoRecording: {default: false},
+    autoPlay: {default: false},
+    localStorage: {default: false},
+    binaryFormat: {default: false}
   },
 
   init: function () {
@@ -13,6 +16,22 @@ AFRAME.registerComponent('avatar-recorder', {
       self.cameraEl = evt.detail.cameraEl;
       self.cameraEl.setAttribute('motion-capture-recorder', {autoStart: true, visibleStroke: false});
     });
+  },
+
+  playRecording: function () {
+    var data;
+    var el = this.el;
+    if (!this.data.autoPlay) { return; }
+    data = JSON.parse(localStorage.getItem('avatar-recording')) || this.recordingData;
+    if (!data) { return; }
+    el.setAttribute('avatar-player', {loop: true});
+    el.components['avatar-player'].startPlaying(data);
+  },
+
+  stopPlayRecording: function () {
+    var avatarPlayer = this.el.components['avatar-player'];
+    if (!avatarPlayer) { return; }
+    avatarPlayer.stopPlaying();
   },
 
   throttledTick: function() {
@@ -31,6 +50,7 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   play: function () {
+    this.playRecording();
     window.addEventListener('keydown', this.onKeyDown);
   },
 
@@ -39,12 +59,36 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   /**
-   * <ctrl> + <alt> + <shift> + r = toggle recording
+   * space = toggle recording, p = stop playing, c = clear local storage
    */
   onKeyDown: function (evt) {
-    var shortcutPressed = evt.keyCode === 82 && evt.ctrlKey && evt.altKey && evt.shiftKey;
-    if (!shortcutPressed) { return; }
-    this.toggleRecording();
+    var key = evt.keyCode;
+    if (key !== 32 && key !== 80 && key !== 67) { return; }
+    switch (key) {
+      case 32: {
+        this.toggleRecording();
+        break;
+      }
+
+      case 80: {
+        this.togglePlaying();
+        break;
+      }
+
+      case 67: {
+        localStorage.removeItem('avatar-recording');
+        break;
+      }
+    }
+  },
+
+  togglePlaying: function () {
+    var avatarPlayer = this.el.components['avatar-player'];
+    if (avatarPlayer.isPlaying) {
+      this.stopPlayRecording();
+    } else {
+      this.playRecording();
+    }
   },
 
   toggleRecording: function () {
@@ -59,6 +103,7 @@ AFRAME.registerComponent('avatar-recorder', {
     var trackedControllersEls = this.trackedControllersEls;
     var keys = Object.keys(trackedControllersEls);
     if (this.isRecording) { return; }
+    this.stopPlayRecording();
     this.isRecording = true;
     this.cameraEl.components['motion-capture-recorder'].startRecording();
     keys.forEach(function (id) {
@@ -76,24 +121,39 @@ AFRAME.registerComponent('avatar-recorder', {
       trackedControllersEls[id].components['motion-capture-recorder'].stopRecording();
     });
     this.saveRecording();
+    if (this.data.autoPlay) { this.playRecording(); }
   },
 
   getJSONData: function () {
     var data = {};
     var trackedControllersEls = this.trackedControllersEls;
     var keys = Object.keys(trackedControllersEls);
-    if (this.isRecording) { false; }
+    if (this.isRecording) { return; }
     this.isRecording = false;
     data.camera = this.cameraEl.components['motion-capture-recorder'].getJSONData();
     keys.forEach(function (id) {
       data[id] = trackedControllersEls[id].components['motion-capture-recorder'].getJSONData();
     });
+    this.recordingData = data;
     return data;
   },
 
-  saveRecording: function (binary) {
-    var jsonData = JSON.stringify(this.getJSONData());
-    var type = binary ? 'application/octet-binary' : 'application/json';
+  saveRecording: function () {
+    var data = this.getJSONData()
+    if (this.data.localStorage) {
+      this.saveToLocalStorage(data);
+    } else {
+      this.saveRecordingFile(data);
+    }
+  },
+
+  saveToLocalStorage: function (data) {
+    localStorage.setItem('avatar-recording', JSON.stringify(data));
+  },
+
+  saveRecordingFile: function (data) {
+    var jsonData = JSON.stringify(data);
+    var type = this.data.binaryFormat ? 'application/octet-binary' : 'application/json';
     var blob = new Blob([jsonData], {type: type});
     var url = URL.createObjectURL(blob);
     var fileName = 'player-recording-' + document.title + '-' + Date.now() + '.json';
@@ -107,5 +167,5 @@ AFRAME.registerComponent('avatar-recorder', {
       aEl.click();
       document.body.removeChild(aEl);
     }, 1);
-  },
+  }
 });
