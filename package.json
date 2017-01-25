@@ -7,7 +7,7 @@
   "main": "src/index.js",
   "scripts": {
     "build": "cross-env NODE_ENV=production webpack --config webpack.dev.js",
-    "start": "webpack-dev-server --host 0.0.0.0 --config webpack.dev.js --progress --colors --hot -d --open --inline --content-base examples",
+    "start": "webpack-dev-server --host 0.0.0.0 --config webpack.dev.js --progress --colors --hot -d --open --inline",
     "dist": "webpack src/index.js dist/aframe-motion-capture.js && webpack -p src/index.js dist/aframe-motion-capture.min.js",
     "lint": "semistandard -v | snazzy",
     "prepublish": "npm run dist",
