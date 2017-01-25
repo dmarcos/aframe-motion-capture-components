@@ -1,4 +1,22 @@
-/* global THREE AFRAME  */
+/* global AFRAME, THREE */
+
+var EVENTS = {
+  axismove: {id: 0, props: ['id', 'axis']},
+  buttonchanged: {id: 1, props: ['id', 'state']},
+  buttondown: {id: 2, props: ['id', 'state']},
+  buttonup: {id: 3, props: ['id', 'state']},
+  touchstart: {id: 4, props: ['id', 'state']},
+  touchend: {id: 5, props: ['id', 'state']}
+};
+
+var EVENTS_DECODE = {
+  0: 'axismove',
+  1: 'buttonchanged',
+  2: 'buttondown',
+  3: 'touchstart',
+  4: 'touchend'
+};
+
 AFRAME.registerComponent('motion-capture-recorder', {
   schema: {
     enabled: {default: true},
@@ -11,12 +29,14 @@ AFRAME.registerComponent('motion-capture-recorder', {
   init: function () {
     this.drawing = false;
     this.recordedEvents = [];
+    this.recordedPoses = [];
     this.addEventListeners();
   },
 
   addEventListeners: function () {
     var el = this.el;
     this.recordEvent = this.recordEvent.bind(this);
+    el.addEventListener('axismove', this.recordEvent);
     el.addEventListener('buttonchanged', this.onTriggerChanged.bind(this));
     el.addEventListener('buttonchanged', this.recordEvent);
     el.addEventListener('buttonup', this.recordEvent);
@@ -25,13 +45,15 @@ AFRAME.registerComponent('motion-capture-recorder', {
     el.addEventListener('touchend', this.recordEvent);
   },
 
-  recordEvent: function(evt) {
+  recordEvent: function (evt) {
     var detail;
     if (!this.isRecording) { return; }
-    detail = {
-      id: evt.detail.id,
-      state: evt.detail.state
-    };
+
+    detail = {};
+    EVENTS[evt.type].props.forEach(function buildDetail (propName) {
+      detail[propName] = evt.detail[propName];
+    });
+
     this.recordedEvents.push({
       name: evt.type,
       detail: detail,
@@ -68,6 +90,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
     var url = URL.createObjectURL(blob);
     var fileName = 'motion-capture-' + document.title + '-' + Date.now() + '.json';
     var aEl = document.createElement('a');
+    aEl.setAttribute('class', 'motion-capture-download');
     aEl.href = url;
     aEl.setAttribute('download', fileName);
     aEl.innerHTML = 'downloading...';
