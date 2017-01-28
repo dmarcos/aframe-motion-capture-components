@@ -4,7 +4,8 @@ AFRAME.registerComponent('motion-capture-player', {
     enabled: {default: true},
     recorderEl: {type: 'selector'},
     loop: {default: true},
-    src: {default: ''}
+    src: {default: ''},
+    spectatorCamera: {default: false}
   },
 
   init: function () {

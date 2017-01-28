@@ -2,13 +2,84 @@
 AFRAME.registerComponent('avatar-player', {
   schema: {
     src: {default: ''},
-    loop: {default: false}
+    loop: {default: false},
+    spectatorMode: {default: true}
+  },
+
+  init: function () {
+    this.onKeyDown = this.onKeyDown.bind(this);
+  },
+
+  play: function () {
+    window.addEventListener('keydown', this.onKeyDown);
+  },
+
+  pause: function () {
+    window.removeEventListener('keydown', this.onKeyDown);
+  },
+
+  /**
+   * space = toggle recording, p = stop playing, c = clear local storage
+   */
+  onKeyDown: function (evt) {
+    var key = evt.keyCode;
+    if ( key !== 81) { return; }
+    switch (key) {
+      case 81: {
+        this.toggleSpectatorCamera();
+        break;
+      }
+    }
+  },
+
+  toggleSpectatorCamera: function () {
+    var spectatorMode = !this.el.getAttribute('avatar-player').spectatorMode;
+    this.el.setAttribute('avatar-player', 'spectatorMode', spectatorMode);
   },
 
   update: function (oldData) {
     var data = this.data;
+    this.updateSpectatorCamera();
     if (!data.src || oldData.src === data.src) { return; }
     this.updateSrc(data.src);
+  },
+
+  updateSpectatorCamera: function () {
+    var spectatorMode = this.data.spectatorMode;
+    var spectatorCameraEl = this.spectatorCameraEl;
+    if (!this.el.camera) { return; }
+    if (spectatorMode && spectatorCameraEl && spectatorCameraEl.getAttribute('camera').active) { return; }
+    if (spectatorMode && !spectatorCameraEl) {
+      this.initSpectatorCamera();
+      return;
+    }
+    if (spectatorMode) {
+      spectatorCameraEl.setAttribute('camera', 'active', true);
+    } else {
+      this.currentCameraEl.setAttribute('camera', 'active', true);
+    }
+  },
+
+  initSpectatorCamera: function () {
+    var spectatorCameraEl;
+    var currentCameraEl = this.currentCameraEl = this.el.camera.el;
+    var currentCameraPosition = currentCameraEl.getAttribute('position');
+    if (this.spectatorCameraEl || !this.data.spectatorMode) { return; }
+    spectatorCameraEl = this.spectatorCameraEl = document.createElement('a-entity');
+    spectatorCameraEl.id = 'spectatorCamera';
+    spectatorCameraEl.setAttribute('camera', '');
+    spectatorCameraEl.setAttribute('position', {
+      x: currentCameraPosition.x,
+      y: currentCameraPosition.y,
+      z: currentCameraPosition.z + 1
+    });
+    spectatorCameraEl.setAttribute('look-controls', '');
+    spectatorCameraEl.setAttribute('wasd-controls', '');
+    currentCameraEl.setAttribute('geometry', {primitive: 'box', height: 0.3, width: 0.3, depth: 0.2});
+    currentCameraEl.setAttribute('material', {color: 'pink'});
+    currentCameraEl.removeAttribute('data-aframe-default-camera');
+    currentCameraEl.addEventListener('pause', function () { currentCameraEl.play(); });
+    this.el.appendChild(spectatorCameraEl);
   },
 
   updateSrc: function (src) {
@@ -50,6 +121,7 @@ AFRAME.registerComponent('avatar-player', {
       puppetEl.setAttribute('motion-capture-player', {loop: false});
       puppetEl.components['motion-capture-player'].startPlaying(data[key]);
     });
+    this.initSpectatorCamera();
   },
 
   stopPlaying: function () {
