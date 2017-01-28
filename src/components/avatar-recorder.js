@@ -12,16 +12,27 @@ AFRAME.registerComponent('avatar-recorder', {
 
   init: function () {
     var self = this;
+    var el = this.el;
     this.trackedControllerEls = {};
     this.onKeyDown = this.onKeyDown.bind(this);
     this.tick = AFRAME.utils.throttle(this.throttledTick, 100, this);
-    this.el.addEventListener('camera-set-active', function (evt) {
-      self.cameraEl = evt.detail.cameraEl;
+
+    // Grab camera.
+    if (el.camera && el.camera.el) {
+      prepareCamera(el.camera.el);
+    } else {
+      el.addEventListener('camera-set-active', function (evt) {
+        prepareCamera(evt.detail.cameraEl);
+      });
+    }
+
+    function prepareCamera (cameraEl) {
+      self.cameraEl = cameraEl;
       self.cameraEl.setAttribute('motion-capture-recorder', {
         autoStart: true,
         visibleStroke: false
       });
-    });
+    }
   },
 
   playRecording: function () {
