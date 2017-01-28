@@ -24,12 +24,12 @@ AFRAME.registerComponent('avatar-recorder', {
     if (!this.data.autoPlay) { return; }
     data = JSON.parse(localStorage.getItem('avatar-recording')) || this.recordingData;
     if (!data) { return; }
-    el.setAttribute('avatar-player', {loop: true});
-    el.components['avatar-player'].startPlaying(data);
+    el.setAttribute('avatar-replayer', {loop: true});
+    el.components['avatar-replayer'].startPlaying(data);
   },
 
   stopPlayRecording: function () {
-    var avatarPlayer = this.el.components['avatar-player'];
+    var avatarPlayer = this.el.components['avatar-replayer'];
     if (!avatarPlayer) { return; }
     avatarPlayer.stopPlaying();
   },
@@ -86,7 +86,7 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   togglePlaying: function () {
-    var avatarPlayer = this.el.components['avatar-player'];
+    var avatarPlayer = this.el.components['avatar-replayer'];
     if (avatarPlayer.isPlaying) {
       this.stopPlayRecording();
     } else {

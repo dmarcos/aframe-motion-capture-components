@@ -26,7 +26,7 @@ Specify the path to a captured WebVR recording JSON file. Hit `p` to toggle
 playback.
 
 ```html
-<a-scene avatar-player="src: recording.json">
+<a-scene avatar-replayer="src: recording.json">
   <a-entity id="controller1" hand-controls"></a-entity>
   <a-entity id="controller2" hand-controls"></a-entity>
 </a-scene>
@@ -43,14 +43,14 @@ playback.
 | binaryFormat  |             | false         |
 | localStorage  |             | false         |
 
-#### avatar-player
+#### avatar-replayer
 
 | Property | Description | Default Value |
 | -------- | ----------- | ------------- |
 | src      |             | ''            |
 | loop     |             | false         |
 
-#### motion-capture-player
+#### motion-capture-replayer
 
 | Property   | Description | Default Value |
 | --------   | ----------- | ------------- |
@@ -92,7 +92,7 @@ Install and use by directly including the [browser files](dist):
 </head>
 
 <body>
-  <a-scene avatar-recorder avatar-player></a-scene>
+  <a-scene avatar-recorder avatar-replayer></a-scene>
 </body>
 ```
 

@@ -1,5 +1,5 @@
 /* global THREE AFRAME  */
-AFRAME.registerComponent('avatar-player', {
+AFRAME.registerComponent('avatar-replayer', {
   schema: {
     src: {default: ''},
     loop: {default: false},
@@ -111,15 +111,15 @@ AFRAME.registerComponent('avatar-player', {
 
     Object.keys(data).forEach(function setPlayer (key) {
       if (key === 'camera') {
-        sceneEl.camera.el.setAttribute('motion-capture-player', {loop: false});
-        sceneEl.camera.el.components['motion-capture-player'].startPlaying(data.camera);
+        sceneEl.camera.el.setAttribute('motion-capture-replayer', {loop: false});
+        sceneEl.camera.el.components['motion-capture-replayer'].startPlaying(data.camera);
         return;
       }
 
       puppetEl = sceneEl.querySelector('#' + key);
       if (!puppetEl) { console.warn('Avatar Player: No element with id ' + key); }
-      puppetEl.setAttribute('motion-capture-player', {loop: false});
-      puppetEl.components['motion-capture-player'].startPlaying(data[key]);
+      puppetEl.setAttribute('motion-capture-replayer', {loop: false});
+      puppetEl.components['motion-capture-replayer'].startPlaying(data[key]);
     });
     this.initSpectatorCamera();
   },
@@ -132,11 +132,11 @@ AFRAME.registerComponent('avatar-player', {
     keys = Object.keys(this.recordingData);
     keys.forEach(function (key) {
       if (key === 'camera') {
-        self.el.camera.el.components['motion-capture-player'].stopPlaying();
+        self.el.camera.el.components['motion-capture-replayer'].stopPlaying();
       } else {
         el = document.querySelector('#' + key);
         if (!el) { console.warn('Avatar Player: No element with id ' + key); }
-        el.components['motion-capture-player'].stopPlaying();
+        el.components['motion-capture-replayer'].stopPlaying();
       }
     });
   },

@@ -4,9 +4,9 @@ if (typeof AFRAME === 'undefined') {
 
 // Components
 require('./components/motion-capture-recorder.js');
-require('./components/motion-capture-player.js');
+require('./components/motion-capture-replayer.js');
 require('./components/avatar-recorder.js');
-require('./components/avatar-player.js');
+require('./components/avatar-replayer.js');
 require('./components/stroke.js');
 
 // Systems

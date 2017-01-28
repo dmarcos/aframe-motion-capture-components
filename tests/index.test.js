@@ -94,20 +94,20 @@ suite('avatar-recorder', function () {
   });
 });
 
-suite('avatar-player', function () {
+suite('avatar-replayer', function () {
   var sceneEl;
 
   setup(function (done) {
     sceneEl = document.createElement('a-scene');
     sceneEl.addEventListener('componentinitialized', evt => {
-      if (evt.detail.name !== 'avatar-player') { return; }
+      if (evt.detail.name !== 'avatar-replayer') { return; }
       done();
     });
-    sceneEl.setAttribute('avatar-player', '');
+    sceneEl.setAttribute('avatar-replayer', '');
     document.body.appendChild(sceneEl);
   });
 
-  test('sets motion-capture-player on camera and controllers', (done) => {
+  test('sets motion-capture-replayer on camera and controllers', (done) => {
     const c1 = document.createElement('a-entity');
     c1.setAttribute('id', 'c1');
     c1.setAttribute('tracked-controls', '');
@@ -118,29 +118,29 @@ suite('avatar-player', function () {
     sceneEl.appendChild(c2);
 
     sceneEl.addEventListener('camera-set-active', () => {
-      sceneEl.components['avatar-player'].startPlaying({
+      sceneEl.components['avatar-replayer'].startPlaying({
         camera: {poses: [{timestamp: 0}], events: []},
         c1: {poses: [{timestamp: 0}], events: []},
         c2: {poses: [{timestamp: 0}], events: []}
       });
-      assert.ok(sceneEl.camera.el.getAttribute('motion-capture-player'));
-      assert.ok(c1.getAttribute('motion-capture-player'));
-      assert.ok(c2.getAttribute('motion-capture-player'));
+      assert.ok(sceneEl.camera.el.getAttribute('motion-capture-replayer'));
+      assert.ok(c1.getAttribute('motion-capture-replayer'));
+      assert.ok(c2.getAttribute('motion-capture-replayer'));
       done();
     });
   });
 
-  test('calls startPlaying on motion-capture-player', function (done) {
+  test('calls startPlaying on motion-capture-replayer', function (done) {
     const c1 = document.createElement('a-entity');
     c1.setAttribute('id', 'c1');
     c1.setAttribute('tracked-controls', '');
-    c1.setAttribute('motion-capture-player', '');
-    const c1StartPlayingSpy = this.sinon.spy(c1.components['motion-capture-player'],
+    c1.setAttribute('motion-capture-replayer', '');
+    const c1StartPlayingSpy = this.sinon.spy(c1.components['motion-capture-replayer'],
                                              'startPlaying');
     sceneEl.appendChild(c1);
 
     sceneEl.addEventListener('camera-set-active', () => {
-      sceneEl.components['avatar-player'].startPlaying({
+      sceneEl.components['avatar-replayer'].startPlaying({
         camera: {poses: [{timestamp: 0}], events: []},
         c1: {poses: [{timestamp: 0}], events: []},
       });
@@ -311,18 +311,18 @@ suite('motion-capture-recorder', function () {
   });
 });
 
-suite('motion-capture-player', function () {
+suite('motion-capture-replayer', function () {
   var component;
   var el;
 
   setup(function (done) {
     el = helpers.entityFactory();
     el.addEventListener('componentinitialized', evt => {
-      if (evt.detail.name !== 'motion-capture-player') { return; }
-      component = el.components['motion-capture-player'];
+      if (evt.detail.name !== 'motion-capture-replayer') { return; }
+      component = el.components['motion-capture-replayer'];
       done();
     });
-    el.setAttribute('motion-capture-player', 'loop: false');
+    el.setAttribute('motion-capture-replayer', 'loop: false');
   });
 
   test('plays poses', function () {

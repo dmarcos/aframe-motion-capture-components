@@ -1,5 +1,5 @@
 /* global AFRAME, THREE */
-AFRAME.registerComponent('motion-capture-player', {
+AFRAME.registerComponent('motion-capture-replayer', {
   schema: {
     enabled: {default: true},
     recorderEl: {type: 'selector'},
