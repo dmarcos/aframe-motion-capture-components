@@ -1,17 +1,15 @@
 var webpack = require('webpack');
-var outputFilename = 'js/build.js';
-var PLUGINS = [];
 
+var PLUGINS = [];
 if (process.env.NODE_ENV === 'production') {
   PLUGINS.push(new webpack.optimize.UglifyJsPlugin());
-  outputFilename = 'examples/js/build.js';
 }
 
 module.exports = {
   entry: './src/index.js',
   output: {
     path: __dirname,
-    filename: outputFilename
+    filename: './examples/js/build.js'
   },
   plugins: PLUGINS
 };

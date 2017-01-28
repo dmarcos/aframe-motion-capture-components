@@ -411,6 +411,9 @@
 /***/ function(module, exports) {
 
 	/* global THREE AFRAME  */
+	var log = AFRAME.utils.debug('aframe-motion-capture:info');
+	var warn = AFRAME.utils.debug('aframe-motion-capture:warn');
+
 	AFRAME.registerComponent('avatar-recorder', {
 	  schema: {
 	    autoRecording: {default: false},
@@ -426,7 +429,10 @@
 	    this.tick = AFRAME.utils.throttle(this.throttledTick, 100, this);
 	    this.el.addEventListener('camera-set-active', function (evt) {
 	      self.cameraEl = evt.detail.cameraEl;
-	      self.cameraEl.setAttribute('motion-capture-recorder', {autoStart: true, visibleStroke: false});
+	      self.cameraEl.setAttribute('motion-capture-recorder', {
+	        autoStart: true,
+	        visibleStroke: false
+	      });
 	    });
 	  },
 
@@ -434,6 +440,7 @@
 	    var data;
 	    var el = this.el;
 	    if (!this.data.autoPlay) { return; }
+	    log('Replaying recording.');
 	    data = JSON.parse(localStorage.getItem('avatar-recording')) || this.recordingData;
 	    if (!data) { return; }
 	    el.setAttribute('avatar-replayer', {loop: true});
@@ -447,14 +454,14 @@
 	  },
 
 	  /**
-	   * Poll for tracked contorllers.
+	   * Poll for tracked controllers.
 	   */
 	  throttledTick: function () {
 	    var self = this;
 	    var trackedControllerEls = this.el.querySelectorAll('[tracked-controls]');
 	    trackedControllerEls.forEach(function (trackedControllerEl) {
 	      if (!trackedControllerEl.id) {
-	        console.warn('Player Recorder: Found tracked controllers with no id. It will not be recorded');
+	        warn('Player Recorder: Found tracked controllers with no id. It will not be recorded');
 	        return;
 	      }
 	      if (self.trackedControllerEls[trackedControllerEl.id]) { return; }
@@ -486,20 +493,22 @@
 	      }
 
 	      case 80: {
-	        this.togglePlaying();
+	        this.toggleReplaying();
 	        break;
 	      }
 
 	      case 67: {
+	        log('Recording cleared from localStorage.');
 	        localStorage.removeItem('avatar-recording');
 	        break;
 	      }
 	    }
 	  },
 
-	  togglePlaying: function () {
+	  toggleReplaying: function () {
 	    var avatarPlayer = this.el.components['avatar-replayer'];
 	    if (avatarPlayer.isPlaying) {
+	      log('Stopped replaying.');
 	      this.stopPlayRecording();
 	    } else {
 	      this.playRecording();
@@ -518,6 +527,7 @@
 	    var trackedControllerEls = this.trackedControllerEls;
 	    var keys = Object.keys(trackedControllerEls);
 	    if (this.isRecording) { return; }
+	    log('Starting recording!');
 	    this.stopPlayRecording();
 	    this.isRecording = true;
 	    this.cameraEl.components['motion-capture-recorder'].startRecording();
@@ -530,6 +540,7 @@
 	    var trackedControllerEls = this.trackedControllerEls;
 	    var keys = Object.keys(trackedControllerEls);
 	    if (!this.isRecording) { return; }
+	    log('Stopped recording.');
 	    this.isRecording = false;
 	    this.cameraEl.components['motion-capture-recorder'].stopRecording();
 	    keys.forEach(function (id) {
@@ -556,8 +567,10 @@
 	  saveRecording: function () {
 	    var data = this.getJSONData()
 	    if (this.data.localStorage) {
+	      log('Recording saved to localStorage.');
 	      this.saveToLocalStorage(data);
 	    } else {
+	      log('Recording saved to file.');
 	      this.saveRecordingFile(data);
 	    }
 	  },
