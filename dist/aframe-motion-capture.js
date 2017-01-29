@@ -84,11 +84,11 @@
 
 	AFRAME.registerComponent('motion-capture-recorder', {
 	  schema: {
+	    autoRecord: {default: false},
 	    enabled: {default: true},
 	    hand: {default: 'right'},
-	    visibleStroke: {default: true},
 	    persistStroke: {default: false},
-	    autoStart: {default: false}
+	    visibleStroke: {default: true}
 	  },
 
 	  init: function () {
@@ -129,7 +129,7 @@
 	  onTriggerChanged: function (evt) {
 	    var data = this.data;
 	    var value;
-	    if (!data.enabled || data.autoStart) { return; }
+	    if (!data.enabled || data.autoRecord) { return; }
 	    // Not Trigger
 	    if (evt.detail.id !== 1) { return; }
 	    value = evt.detail.state.value;
@@ -170,7 +170,7 @@
 	  update: function () {
 	    var el = this.el;
 	    var data = this.data;
-	    if (this.data.autoStart) {
+	    if (this.data.autoRecord) {
 	      this.startRecording();
 	    } else {
 	      el.setAttribute('vive-controls', {hand: data.hand});
@@ -248,7 +248,8 @@
 	    enabled: {default: true},
 	    recorderEl: {type: 'selector'},
 	    loop: {default: true},
-	    src: {default: ''}
+	    src: {default: ''},
+	    spectatorCamera: {default: false}
 	  },
 
 	  init: function () {
@@ -281,7 +282,7 @@
 	  },
 
 	  updateSrc: function (src) {
-	    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startPlaying.bind(this));
+	    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
 	  },
 
 	  onStrokeStarted: function(evt) {
@@ -289,25 +290,25 @@
 	  },
 
 	  onStrokeEnded: function(evt) {
-	    this.startPlaying({
+	    this.startReplaying({
 	      poses: evt.detail.poses,
 	      events: []
 	    });
 	  },
 
 	  play: function () {
-	    if (this.playingStroke) { this.startPlaying(this.playingStroke); }
+	    if (this.playingStroke) { this.startReplaying(this.playingStroke); }
 	  },
 
-	  startPlaying: function (data) {
+	  startReplaying: function (data) {
 	    this.ignoredFrames = 0;
 	    this.storeInitialPose();
-	    this.startPlayingPoses(data.poses);
-	    this.startPlayingEvents(data.events);
+	    this.startReplayingPoses(data.poses);
+	    this.startReplayingEvents(data.events);
 	  },
 
-	  stopPlaying: function () {
-	    this.isPlaying = false;
+	  stopReplaying: function () {
+	    this.isReplaying = false;
 	    this.restoreInitialPose();
 	  },
 
@@ -326,16 +327,16 @@
 	    el.setAttribute('rotation', this.initialPose.rotation);
 	  },
 
-	  startPlayingPoses: function (poses) {
-	    this.isPlaying = true;
+	  startReplayingPoses: function (poses) {
+	    this.isReplaying = true;
 	    this.currentPoseIndex = 0;
 	    this.playingPoses = poses;
 	    this.currentPoseTime = poses[0].timestamp;
 	  },
 
-	  startPlayingEvents: function (events) {
+	  startReplayingEvents: function (events) {
 	    var firstEvent;
-	    this.isPlaying = true;
+	    this.isReplaying = true;
 	    this.currentEventIndex = 0;
 	    this.playingEvents = events;
 	    firstEvent = events[0];
@@ -395,7 +396,7 @@
 	      return;
 	    }
 
-	    if (!this.isPlaying) { return; }
+	    if (!this.isReplaying) { return; }
 	    this.playRecording(delta);
 	  }
 	});
@@ -410,15 +411,17 @@
 /* 3 */
 /***/ function(module, exports) {
 
-	/* global THREE AFRAME  */
-	var log = AFRAME.utils.debug('aframe-motion-capture:info');
-	var warn = AFRAME.utils.debug('aframe-motion-capture:warn');
+	/* global THREE, AFRAME  */
+	var log = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:info');
+	var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:warn');
+
+	var LOCALSTORAGE_KEY = 'avatar-recording';
 
 	AFRAME.registerComponent('avatar-recorder', {
 	  schema: {
-	    autoRecording: {default: false},
-	    autoPlay: {default: false},
-	    localStorage: {default: false},
+	    autoRecord: {default: false},
+	    autoPlay: {default: true},
+	    localStorage: {default: true},
 	    binaryFormat: {default: false}
 	  },
 
@@ -441,7 +444,7 @@
 	    function prepareCamera (cameraEl) {
 	      self.cameraEl = cameraEl;
 	      self.cameraEl.setAttribute('motion-capture-recorder', {
-	        autoStart: true,
+	        autoRecord: false,
 	        visibleStroke: false
 	      });
 	    }
@@ -450,17 +453,17 @@
 	  playRecording: function () {
 	    var data;
 	    var el = this.el;
-	    if (!this.data.autoPlay) { return; }
-	    log('Replaying recording.');
-	    data = JSON.parse(localStorage.getItem('avatar-recording')) || this.recordingData;
+	    data = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
 	    if (!data) { return; }
+	    log('Replaying recording.');
 	    el.setAttribute('avatar-replayer', {loop: true});
-	    el.components['avatar-replayer'].startPlaying(data);
+	    el.components['avatar-replayer'].startReplaying(data);
 	  },
 
-	  stopPlayRecording: function () {
+	  stopReplaying: function () {
 	    var avatarPlayer = this.el.components['avatar-replayer'];
 	    if (!avatarPlayer) { return; }
+	    log('Stopped replaying.');
 	    avatarPlayer.stopPlaying();
 	  },
 
@@ -472,18 +475,23 @@
 	    var trackedControllerEls = this.el.querySelectorAll('[tracked-controls]');
 	    trackedControllerEls.forEach(function (trackedControllerEl) {
 	      if (!trackedControllerEl.id) {
-	        warn('Player Recorder: Found tracked controllers with no id. It will not be recorded');
+	        warn('Found tracked controllers with no id. It will not be recorded');
 	        return;
 	      }
 	      if (self.trackedControllerEls[trackedControllerEl.id]) { return; }
-	      trackedControllerEl.setAttribute('motion-capture-recorder', {autoStart: true, visibleStroke: false});
+	      trackedControllerEl.setAttribute('motion-capture-recorder', {
+	        autoRecord: false,
+	        visibleStroke: false
+	      });
 	      self.trackedControllerEls[trackedControllerEl.id] = trackedControllerEl;
-	      if (this.isRecording) { trackedControllerEl.components['motion-capture-recorder'].startRecording(); }
+	      if (this.isRecording) {
+	        trackedControllerEl.components['motion-capture-recorder'].startRecording();
+	      }
 	    });
 	  },
 
 	  play: function () {
-	    this.playRecording();
+	    if (this.data.autoPlay) { this.playRecording(); }
 	    window.addEventListener('keydown', this.onKeyDown);
 	  },
 
@@ -510,7 +518,8 @@
 
 	      case 67: {
 	        log('Recording cleared from localStorage.');
-	        localStorage.removeItem('avatar-recording');
+	        this.recordingData = null;
+	        localStorage.removeItem(LOCALSTORAGE_KEY);
 	        break;
 	      }
 	    }
@@ -518,9 +527,13 @@
 
 	  toggleReplaying: function () {
 	    var avatarPlayer = this.el.components['avatar-replayer'];
-	    if (avatarPlayer.isPlaying) {
-	      log('Stopped replaying.');
-	      this.stopPlayRecording();
+	    if (!avatarPlayer) {
+	      this.el.setAttribute('avatar-replayer', '');
+	      avatarPlayer = this.el.components['avatar-replayer'];
+	    }
+
+	    if (avatarPlayer.isReplaying) {
+	      this.stopReplaying();
 	    } else {
 	      this.playRecording();
 	    }
@@ -539,7 +552,7 @@
 	    var keys = Object.keys(trackedControllerEls);
 	    if (this.isRecording) { return; }
 	    log('Starting recording!');
-	    this.stopPlayRecording();
+	    this.stopReplaying();
 	    this.isRecording = true;
 	    this.cameraEl.components['motion-capture-recorder'].startRecording();
 	    keys.forEach(function (id) {
@@ -587,7 +600,7 @@
 	  },
 
 	  saveToLocalStorage: function (data) {
-	    localStorage.setItem('avatar-recording', JSON.stringify(data));
+	    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(data));
 	  },
 
 	  saveRecordingFile: function (data) {
@@ -618,17 +631,100 @@
 	AFRAME.registerComponent('avatar-replayer', {
 	  schema: {
 	    src: {default: ''},
-	    loop: {default: false}
+	    loop: {default: false},
+	    spectatorMode: {default: false}
+	  },
+
+	  init: function () {
+	    var sceneEl = this.el;
+	    var self = this;
+
+	    // Prepare camera.
+	    if (sceneEl.camera) {
+	      this.currentCameraEl = sceneEl.camera.el;
+	    } else {
+	      this.el.addEventListener('camera-set-active', function () {
+	        self.currentCameraEl = sceneEl.camera.el;
+	      });
+	    }
+
+	    this.onKeyDown = this.onKeyDown.bind(this);
+	  },
+
+	  play: function () {
+	    window.addEventListener('keydown', this.onKeyDown);
+	  },
+
+	  pause: function () {
+	    window.removeEventListener('keydown', this.onKeyDown);
+	  },
+
+	  /**
+	   * space = toggle recording, p = stop playing, c = clear local storage
+	   */
+	  onKeyDown: function (evt) {
+	    var key = evt.keyCode;
+	    if ( key !== 81) { return; }
+	    switch (key) {
+	      case 81: {
+	        this.toggleSpectatorCamera();
+	        break;
+	      }
+	    }
+	  },
+
+	  toggleSpectatorCamera: function () {
+	    var spectatorMode = !this.el.getAttribute('avatar-player').spectatorMode;
+	    this.el.setAttribute('avatar-player', 'spectatorMode', spectatorMode);
 	  },
 
 	  update: function (oldData) {
 	    var data = this.data;
+	    this.updateSpectatorCamera();
 	    if (!data.src || oldData.src === data.src) { return; }
 	    this.updateSrc(data.src);
 	  },
 
+	  updateSpectatorCamera: function () {
+	    var spectatorMode = this.data.spectatorMode;
+	    var spectatorCameraEl = this.spectatorCameraEl;
+	    if (!this.el.camera) { return; }
+	    if (spectatorMode && spectatorCameraEl && spectatorCameraEl.getAttribute('camera').active) { return; }
+	    if (spectatorMode && !spectatorCameraEl) {
+	      this.initSpectatorCamera();
+	      return;
+	    }
+	    if (spectatorMode) {
+	      spectatorCameraEl.setAttribute('camera', 'active', true);
+	    } else {
+	      this.currentCameraEl.setAttribute('camera', 'active', true);
+	    }
+	  },
+
+	  initSpectatorCamera: function () {
+	    var spectatorCameraEl;
+	    var currentCameraEl = this.currentCameraEl = this.el.camera.el;
+	    var currentCameraPosition = currentCameraEl.getAttribute('position');
+	    if (this.spectatorCameraEl || !this.data.spectatorMode) { return; }
+	    spectatorCameraEl = this.spectatorCameraEl = document.createElement('a-entity');
+	    spectatorCameraEl.id = 'spectatorCamera';
+	    spectatorCameraEl.setAttribute('camera', '');
+	    spectatorCameraEl.setAttribute('position', {
+	      x: currentCameraPosition.x,
+	      y: currentCameraPosition.y,
+	      z: currentCameraPosition.z + 1
+	    });
+	    spectatorCameraEl.setAttribute('look-controls', '');
+	    spectatorCameraEl.setAttribute('wasd-controls', '');
+	    currentCameraEl.setAttribute('geometry', {primitive: 'box', height: 0.3, width: 0.3, depth: 0.2});
+	    currentCameraEl.setAttribute('material', {color: 'pink'});
+	    currentCameraEl.removeAttribute('data-aframe-default-camera');
+	    currentCameraEl.addEventListener('pause', function () { currentCameraEl.play(); });
+	    this.el.appendChild(spectatorCameraEl);
+	  },
+
 	  updateSrc: function (src) {
-	    this.loadRecordingFromUrl(src, false, this.startPlaying.bind(this));
+	    this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
 	  },
 
 	  /**
@@ -640,16 +736,16 @@
 	   *   [c2ID]: {poses: [], events: []}
 	   * }
 	   */
-	  startPlaying: function (data) {
+	  startReplaying: function (data) {
 	    var self = this;
 	    var puppetEl;
 	    var sceneEl = this.el;
 
 	    this.recordingData = data;
-	    this.isPlaying = true;
+	    this.isReplaying = true;
 	    if (!this.el.camera) {
 	      this.el.addEventListener('camera-set-active', function () {
-	        self.startPlaying(data);
+	        self.startReplaying(data);
 	      });
 	      return;
 	    }
@@ -657,30 +753,31 @@
 	    Object.keys(data).forEach(function setPlayer (key) {
 	      if (key === 'camera') {
 	        sceneEl.camera.el.setAttribute('motion-capture-replayer', {loop: false});
-	        sceneEl.camera.el.components['motion-capture-replayer'].startPlaying(data.camera);
+	        sceneEl.camera.el.components['motion-capture-replayer'].startReplaying(data.camera);
 	        return;
 	      }
 
 	      puppetEl = sceneEl.querySelector('#' + key);
 	      if (!puppetEl) { console.warn('Avatar Player: No element with id ' + key); }
 	      puppetEl.setAttribute('motion-capture-replayer', {loop: false});
-	      puppetEl.components['motion-capture-replayer'].startPlaying(data[key]);
+	      puppetEl.components['motion-capture-replayer'].startReplaying(data[key]);
 	    });
+	    this.initSpectatorCamera();
 	  },
 
-	  stopPlaying: function () {
+	  stopReplaying: function () {
 	    var keys;
 	    var self = this;
-	    if (!this.isPlaying || !this.recordingData) { return; }
-	    this.isPlaying = false;
+	    if (!this.isReplaying || !this.recordingData) { return; }
+	    this.isReplaying = false;
 	    keys = Object.keys(this.recordingData);
 	    keys.forEach(function (key) {
 	      if (key === 'camera') {
-	        self.el.camera.el.components['motion-capture-replayer'].stopPlaying();
+	        self.el.camera.el.components['motion-capture-replayer'].stopReplaying();
 	      } else {
 	        el = document.querySelector('#' + key);
 	        if (!el) { console.warn('Avatar Player: No element with id ' + key); }
-	        el.components['motion-capture-replayer'].stopPlaying();
+	        el.components['motion-capture-replayer'].stopReplaying();
 	      }
 	    });
 	  },
