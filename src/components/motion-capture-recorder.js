@@ -19,11 +19,11 @@ var EVENTS_DECODE = {
 
 AFRAME.registerComponent('motion-capture-recorder', {
   schema: {
+    autoRecord: {default: false},
     enabled: {default: true},
     hand: {default: 'right'},
-    visibleStroke: {default: true},
     persistStroke: {default: false},
-    autoStart: {default: false}
+    visibleStroke: {default: true}
   },
 
   init: function () {
@@ -64,7 +64,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
   onTriggerChanged: function (evt) {
     var data = this.data;
     var value;
-    if (!data.enabled || data.autoStart) { return; }
+    if (!data.enabled || data.autoRecord) { return; }
     // Not Trigger
     if (evt.detail.id !== 1) { return; }
     value = evt.detail.state.value;
@@ -105,7 +105,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
   update: function () {
     var el = this.el;
     var data = this.data;
-    if (this.data.autoStart) {
+    if (this.data.autoRecord) {
       this.startRecording();
     } else {
       el.setAttribute('vive-controls', {hand: data.hand});

@@ -38,7 +38,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
   },
 
   updateSrc: function (src) {
-    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startPlaying.bind(this));
+    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
   },
 
   onStrokeStarted: function(evt) {
@@ -46,25 +46,25 @@ AFRAME.registerComponent('motion-capture-replayer', {
   },
 
   onStrokeEnded: function(evt) {
-    this.startPlaying({
+    this.startReplaying({
       poses: evt.detail.poses,
       events: []
     });
   },
 
   play: function () {
-    if (this.playingStroke) { this.startPlaying(this.playingStroke); }
+    if (this.playingStroke) { this.startReplaying(this.playingStroke); }
   },
 
-  startPlaying: function (data) {
+  startReplaying: function (data) {
     this.ignoredFrames = 0;
     this.storeInitialPose();
-    this.startPlayingPoses(data.poses);
-    this.startPlayingEvents(data.events);
+    this.startReplayingPoses(data.poses);
+    this.startReplayingEvents(data.events);
   },
 
-  stopPlaying: function () {
-    this.isPlaying = false;
+  stopReplaying: function () {
+    this.isReplaying = false;
     this.restoreInitialPose();
   },
 
@@ -83,16 +83,16 @@ AFRAME.registerComponent('motion-capture-replayer', {
     el.setAttribute('rotation', this.initialPose.rotation);
   },
 
-  startPlayingPoses: function (poses) {
-    this.isPlaying = true;
+  startReplayingPoses: function (poses) {
+    this.isReplaying = true;
     this.currentPoseIndex = 0;
     this.playingPoses = poses;
     this.currentPoseTime = poses[0].timestamp;
   },
 
-  startPlayingEvents: function (events) {
+  startReplayingEvents: function (events) {
     var firstEvent;
-    this.isPlaying = true;
+    this.isReplaying = true;
     this.currentEventIndex = 0;
     this.playingEvents = events;
     firstEvent = events[0];
@@ -152,7 +152,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
       return;
     }
 
-    if (!this.isPlaying) { return; }
+    if (!this.isReplaying) { return; }
     this.playRecording(delta);
   }
 });

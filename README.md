@@ -34,21 +34,30 @@ playback.
 
 ### API
 
+#### Keyboard Shortcuts
+
+| Key   | Description                                   |
+|-------|-----------------------------------------------|
+| space | Toggle recording.                             |
+| c     | Clear recording from localStorage and memory. |
+| p     | Toggle replaying.                             |
+
 #### avatar-recorder
 
-| Property      | Description | Default Value |
-| --------      | ----------- | ------------- |
-| autoRecording |             | false         |
-| autoPlay      |             | false         |
-| binaryFormat  |             | false         |
-| localStorage  |             | false         |
+| Property     | Description | Default Value |
+| --------     | ----------- | ------------- |
+| autoPlay     |             | true          |
+| autoRecord   |             | false         |
+| binaryFormat |             | false         |
+| localStorage |             | false         |
 
 #### avatar-replayer
 
-| Property | Description | Default Value |
-| -------- | ----------- | ------------- |
-| src      |             | ''            |
-| loop     |             | false         |
+| Property      | Description | Default Value |
+| --------      | ----------- | ------------- |
+| loop          |             | false         |
+| src           |             | ''            |
+| spectatorMode |             | false         |
 
 #### motion-capture-replayer
 
