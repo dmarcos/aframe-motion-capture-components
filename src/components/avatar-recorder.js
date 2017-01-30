@@ -51,7 +51,7 @@ AFRAME.registerComponent('avatar-recorder', {
     var avatarPlayer = this.el.components['avatar-replayer'];
     if (!avatarPlayer) { return; }
     log('Stopped replaying.');
-    avatarPlayer.stopPlaying();
+    avatarPlayer.stopReplaying();
   },
 
   /**
