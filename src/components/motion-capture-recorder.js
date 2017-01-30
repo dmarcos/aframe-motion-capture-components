@@ -108,6 +108,9 @@ AFRAME.registerComponent('motion-capture-recorder', {
     if (this.data.autoRecord) {
       this.startRecording();
     } else {
+      // Don't try to record camera with controllers.
+      if (el.components.camera) { return; }
+
       el.setAttribute('vive-controls', {hand: data.hand});
       el.setAttribute('oculus-touch-controls', {hand: data.hand});
       el.setAttribute('stroke', {hand: data.hand});
