@@ -9,6 +9,7 @@ AFRAME.registerComponent('avatar-recorder', {
     autoRecord: {default: false},
     autoPlay: {default: true},
     localStorage: {default: true},
+    loop: {default: true},
     binaryFormat: {default: false}
   },
 
@@ -37,13 +38,16 @@ AFRAME.registerComponent('avatar-recorder', {
     }
   },
 
-  playRecording: function () {
-    var data;
+  replayRecording: function () {
+    var data = this.data;
     var el = this.el;
+    var replayData;
+
     data = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
     if (!data) { return; }
+
     log('Replaying recording.');
-    el.setAttribute('avatar-replayer', {loop: true});
+    el.setAttribute('avatar-replayer', {loop: data.loop});
     el.components['avatar-replayer'].startReplaying(data);
   },
 
@@ -78,7 +82,15 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   play: function () {
-    if (this.data.autoPlay) { this.playRecording(); }
+    var self = this;
+    var sceneEl = this.el;
+
+    if (this.data.autoPlay) {
+      // Add timeout to let the scene load a bit before replaying.
+      setTimeout(function () {
+        self.replayRecording();
+      }, 500);
+    }
     window.addEventListener('keydown', this.onKeyDown);
   },
 
@@ -122,7 +134,7 @@ AFRAME.registerComponent('avatar-recorder', {
     if (avatarPlayer.isReplaying) {
       this.stopReplaying();
     } else {
-      this.playRecording();
+      this.replayRecording();
     }
   },
 
@@ -158,7 +170,7 @@ AFRAME.registerComponent('avatar-recorder', {
       trackedControllerEls[id].components['motion-capture-recorder'].stopRecording();
     });
     this.saveRecording();
-    if (this.data.autoPlay) { this.playRecording(); }
+    if (this.data.autoPlay) { this.replayRecording(); }
   },
 
   getJSONData: function () {
