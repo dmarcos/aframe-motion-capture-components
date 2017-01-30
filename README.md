@@ -26,7 +26,7 @@ Specify the path to a captured WebVR recording JSON file. Hit `p` to toggle
 playback.
 
 ```html
-<a-scene avatar-player="src: recording.json">
+<a-scene avatar-replayer="src: recording.json">
   <a-entity id="controller1" hand-controls"></a-entity>
   <a-entity id="controller2" hand-controls"></a-entity>
 </a-scene>
@@ -34,23 +34,32 @@ playback.
 
 ### API
 
+#### Keyboard Shortcuts
+
+| Key   | Description                                   |
+|-------|-----------------------------------------------|
+| space | Toggle recording.                             |
+| c     | Clear recording from localStorage and memory. |
+| p     | Toggle replaying.                             |
+
 #### avatar-recorder
+
+| Property     | Description | Default Value |
+| --------     | ----------- | ------------- |
+| autoPlay     |             | true          |
+| autoRecord   |             | false         |
+| binaryFormat |             | false         |
+| localStorage |             | false         |
+
+#### avatar-replayer
 
 | Property      | Description | Default Value |
 | --------      | ----------- | ------------- |
-| autoRecording |             | false         |
-| autoPlay      |             | false         |
-| binaryFormat  |             | false         |
-| localStorage  |             | false         |
+| loop          |             | false         |
+| src           |             | ''            |
+| spectatorMode |             | false         |
 
-#### avatar-player
-
-| Property | Description | Default Value |
-| -------- | ----------- | ------------- |
-| src      |             | ''            |
-| loop     |             | false         |
-
-#### motion-capture-player
+#### motion-capture-replayer
 
 | Property   | Description | Default Value |
 | --------   | ----------- | ------------- |
@@ -92,7 +101,7 @@ Install and use by directly including the [browser files](dist):
 </head>
 
 <body>
-  <a-scene avatar-recorder avatar-player></a-scene>
+  <a-scene avatar-recorder avatar-replayer></a-scene>
 </body>
 ```
 

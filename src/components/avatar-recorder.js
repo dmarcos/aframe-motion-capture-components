@@ -1,59 +1,84 @@
-/* global THREE AFRAME  */
+/* global THREE, AFRAME  */
+var log = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:info');
+var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:warn');
+
+var LOCALSTORAGE_KEY = 'avatar-recording';
+
 AFRAME.registerComponent('avatar-recorder', {
   schema: {
-    autoRecording: {default: false},
-    autoPlay: {default: false},
-    localStorage: {default: false},
+    autoRecord: {default: false},
+    autoPlay: {default: true},
+    localStorage: {default: true},
     binaryFormat: {default: false}
   },
 
   init: function () {
     var self = this;
+    var el = this.el;
     this.trackedControllerEls = {};
     this.onKeyDown = this.onKeyDown.bind(this);
     this.tick = AFRAME.utils.throttle(this.throttledTick, 100, this);
-    this.el.addEventListener('camera-set-active', function (evt) {
-      self.cameraEl = evt.detail.cameraEl;
-      self.cameraEl.setAttribute('motion-capture-recorder', {autoStart: true, visibleStroke: false});
-    });
+
+    // Grab camera.
+    if (el.camera && el.camera.el) {
+      prepareCamera(el.camera.el);
+    } else {
+      el.addEventListener('camera-set-active', function (evt) {
+        prepareCamera(evt.detail.cameraEl);
+      });
+    }
+
+    function prepareCamera (cameraEl) {
+      self.cameraEl = cameraEl;
+      self.cameraEl.setAttribute('motion-capture-recorder', {
+        autoRecord: false,
+        visibleStroke: false
+      });
+    }
   },
 
   playRecording: function () {
     var data;
     var el = this.el;
-    if (!this.data.autoPlay) { return; }
-    data = JSON.parse(localStorage.getItem('avatar-recording')) || this.recordingData;
+    data = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
     if (!data) { return; }
-    el.setAttribute('avatar-player', {loop: true});
-    el.components['avatar-player'].startPlaying(data);
+    log('Replaying recording.');
+    el.setAttribute('avatar-replayer', {loop: true});
+    el.components['avatar-replayer'].startReplaying(data);
   },
 
-  stopPlayRecording: function () {
-    var avatarPlayer = this.el.components['avatar-player'];
+  stopReplaying: function () {
+    var avatarPlayer = this.el.components['avatar-replayer'];
     if (!avatarPlayer) { return; }
-    avatarPlayer.stopPlaying();
+    log('Stopped replaying.');
+    avatarPlayer.stopReplaying();
   },
 
   /**
-   * Poll for tracked contorllers.
+   * Poll for tracked controllers.
    */
   throttledTick: function () {
     var self = this;
     var trackedControllerEls = this.el.querySelectorAll('[tracked-controls]');
     trackedControllerEls.forEach(function (trackedControllerEl) {
       if (!trackedControllerEl.id) {
-        console.warn('Player Recorder: Found tracked controllers with no id. It will not be recorded');
+        warn('Found tracked controllers with no id. It will not be recorded');
         return;
       }
       if (self.trackedControllerEls[trackedControllerEl.id]) { return; }
-      trackedControllerEl.setAttribute('motion-capture-recorder', {autoStart: true, visibleStroke: false});
+      trackedControllerEl.setAttribute('motion-capture-recorder', {
+        autoRecord: false,
+        visibleStroke: false
+      });
       self.trackedControllerEls[trackedControllerEl.id] = trackedControllerEl;
-      if (this.isRecording) { trackedControllerEl.components['motion-capture-recorder'].startRecording(); }
+      if (this.isRecording) {
+        trackedControllerEl.components['motion-capture-recorder'].startRecording();
+      }
     });
   },
 
   play: function () {
-    this.playRecording();
+    if (this.data.autoPlay) { this.playRecording(); }
     window.addEventListener('keydown', this.onKeyDown);
   },
 
@@ -74,21 +99,28 @@ AFRAME.registerComponent('avatar-recorder', {
       }
 
       case 80: {
-        this.togglePlaying();
+        this.toggleReplaying();
         break;
       }
 
       case 67: {
-        localStorage.removeItem('avatar-recording');
+        log('Recording cleared from localStorage.');
+        this.recordingData = null;
+        localStorage.removeItem(LOCALSTORAGE_KEY);
         break;
       }
     }
   },
 
-  togglePlaying: function () {
-    var avatarPlayer = this.el.components['avatar-player'];
-    if (avatarPlayer.isPlaying) {
-      this.stopPlayRecording();
+  toggleReplaying: function () {
+    var avatarPlayer = this.el.components['avatar-replayer'];
+    if (!avatarPlayer) {
+      this.el.setAttribute('avatar-replayer', '');
+      avatarPlayer = this.el.components['avatar-replayer'];
+    }
+
+    if (avatarPlayer.isReplaying) {
+      this.stopReplaying();
     } else {
       this.playRecording();
     }
@@ -106,7 +138,8 @@ AFRAME.registerComponent('avatar-recorder', {
     var trackedControllerEls = this.trackedControllerEls;
     var keys = Object.keys(trackedControllerEls);
     if (this.isRecording) { return; }
-    this.stopPlayRecording();
+    log('Starting recording!');
+    this.stopReplaying();
     this.isRecording = true;
     this.cameraEl.components['motion-capture-recorder'].startRecording();
     keys.forEach(function (id) {
@@ -118,6 +151,7 @@ AFRAME.registerComponent('avatar-recorder', {
     var trackedControllerEls = this.trackedControllerEls;
     var keys = Object.keys(trackedControllerEls);
     if (!this.isRecording) { return; }
+    log('Stopped recording.');
     this.isRecording = false;
     this.cameraEl.components['motion-capture-recorder'].stopRecording();
     keys.forEach(function (id) {
@@ -144,14 +178,16 @@ AFRAME.registerComponent('avatar-recorder', {
   saveRecording: function () {
     var data = this.getJSONData()
     if (this.data.localStorage) {
+      log('Recording saved to localStorage.');
       this.saveToLocalStorage(data);
     } else {
+      log('Recording saved to file.');
       this.saveRecordingFile(data);
     }
   },
 
   saveToLocalStorage: function (data) {
-    localStorage.setItem('avatar-recording', JSON.stringify(data));
+    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(data));
   },
 
   saveRecordingFile: function (data) {

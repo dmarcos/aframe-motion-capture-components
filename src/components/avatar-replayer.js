@@ -1,12 +1,24 @@
 /* global THREE AFRAME  */
-AFRAME.registerComponent('avatar-player', {
+AFRAME.registerComponent('avatar-replayer', {
   schema: {
     src: {default: ''},
     loop: {default: false},
-    spectatorMode: {default: true}
+    spectatorMode: {default: false}
   },
 
   init: function () {
+    var sceneEl = this.el;
+    var self = this;
+
+    // Prepare camera.
+    if (sceneEl.camera) {
+      this.currentCameraEl = sceneEl.camera.el;
+    } else {
+      this.el.addEventListener('camera-set-active', function () {
+        self.currentCameraEl = sceneEl.camera.el;
+      });
+    }
+
     this.onKeyDown = this.onKeyDown.bind(this);
   },
 
@@ -83,7 +95,7 @@ AFRAME.registerComponent('avatar-player', {
   },
 
   updateSrc: function (src) {
-    this.loadRecordingFromUrl(src, false, this.startPlaying.bind(this));
+    this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
   },
 
   /**
@@ -95,48 +107,48 @@ AFRAME.registerComponent('avatar-player', {
    *   [c2ID]: {poses: [], events: []}
    * }
    */
-  startPlaying: function (data) {
+  startReplaying: function (data) {
     var self = this;
     var puppetEl;
     var sceneEl = this.el;
 
     this.recordingData = data;
-    this.isPlaying = true;
+    this.isReplaying = true;
     if (!this.el.camera) {
       this.el.addEventListener('camera-set-active', function () {
-        self.startPlaying(data);
+        self.startReplaying(data);
       });
       return;
     }
 
     Object.keys(data).forEach(function setPlayer (key) {
       if (key === 'camera') {
-        sceneEl.camera.el.setAttribute('motion-capture-player', {loop: false});
-        sceneEl.camera.el.components['motion-capture-player'].startPlaying(data.camera);
+        sceneEl.camera.el.setAttribute('motion-capture-replayer', {loop: false});
+        sceneEl.camera.el.components['motion-capture-replayer'].startReplaying(data.camera);
         return;
       }
 
       puppetEl = sceneEl.querySelector('#' + key);
       if (!puppetEl) { console.warn('Avatar Player: No element with id ' + key); }
-      puppetEl.setAttribute('motion-capture-player', {loop: false});
-      puppetEl.components['motion-capture-player'].startPlaying(data[key]);
+      puppetEl.setAttribute('motion-capture-replayer', {loop: false});
+      puppetEl.components['motion-capture-replayer'].startReplaying(data[key]);
     });
     this.initSpectatorCamera();
   },
 
-  stopPlaying: function () {
+  stopReplaying: function () {
     var keys;
     var self = this;
-    if (!this.isPlaying || !this.recordingData) { return; }
-    this.isPlaying = false;
+    if (!this.isReplaying || !this.recordingData) { return; }
+    this.isReplaying = false;
     keys = Object.keys(this.recordingData);
     keys.forEach(function (key) {
       if (key === 'camera') {
-        self.el.camera.el.components['motion-capture-player'].stopPlaying();
+        self.el.camera.el.components['motion-capture-replayer'].stopReplaying();
       } else {
         el = document.querySelector('#' + key);
         if (!el) { console.warn('Avatar Player: No element with id ' + key); }
-        el.components['motion-capture-player'].stopPlaying();
+        el.components['motion-capture-replayer'].stopReplaying();
       }
     });
   },
