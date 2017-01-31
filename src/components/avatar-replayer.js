@@ -1,8 +1,12 @@
-/* global THREE AFRAME  */
+/* global THREE, AFRAME  */
+var error = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:error');
+var log = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:info');
+var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:warn');
+
 AFRAME.registerComponent('avatar-replayer', {
   schema: {
     src: {default: ''},
-    loop: {default: false},
+    loop: {default: true},
     spectatorMode: {default: false}
   },
 
@@ -107,32 +111,42 @@ AFRAME.registerComponent('avatar-replayer', {
    *   [c2ID]: {poses: [], events: []}
    * }
    */
-  startReplaying: function (data) {
+  startReplaying: function (replayData) {
+    var data = this.data;
     var self = this;
     var puppetEl;
     var sceneEl = this.el;
 
-    this.recordingData = data;
+    this.recordingreplayData = replayData;
     this.isReplaying = true;
     if (!this.el.camera) {
       this.el.addEventListener('camera-set-active', function () {
-        self.startReplaying(data);
+        self.startReplaying(replayData);
       });
       return;
     }
 
-    Object.keys(data).forEach(function setPlayer (key) {
+    Object.keys(replayData).forEach(function setPlayer (key) {
+      var puppetEl;
+
       if (key === 'camera') {
-        sceneEl.camera.el.setAttribute('motion-capture-replayer', {loop: false});
-        sceneEl.camera.el.components['motion-capture-replayer'].startReplaying(data.camera);
-        return;
+        // Grab camera.
+        log('Setting motion-capture-replayer on camera.');
+        puppetEl = sceneEl.camera.el;
+      } else {
+        // Grab other entities.
+        puppetEl = sceneEl.querySelector('#' + key);
+        if (!puppetEl) {
+          error('No element found with ID ' + key + '.');
+          return;
+        }
       }
 
-      puppetEl = sceneEl.querySelector('#' + key);
-      if (!puppetEl) { console.warn('Avatar Player: No element with id ' + key); }
-      puppetEl.setAttribute('motion-capture-replayer', {loop: false});
-      puppetEl.components['motion-capture-replayer'].startReplaying(data[key]);
+      log('Setting motion-capture-replayer on ' + key + '.');
+      puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
+      puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
     });
+
     this.initSpectatorCamera();
   },
 
@@ -147,7 +161,7 @@ AFRAME.registerComponent('avatar-replayer', {
         self.el.camera.el.components['motion-capture-replayer'].stopReplaying();
       } else {
         el = document.querySelector('#' + key);
-        if (!el) { console.warn('Avatar Player: No element with id ' + key); }
+        if (!el) { warn('No element with id ' + key); }
         el.components['motion-capture-replayer'].stopReplaying();
       }
     });

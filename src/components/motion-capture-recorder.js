@@ -13,8 +13,9 @@ var EVENTS_DECODE = {
   0: 'axismove',
   1: 'buttonchanged',
   2: 'buttondown',
-  3: 'touchstart',
-  4: 'touchend'
+  3: 'buttonup',
+  4: 'touchstart',
+  5: 'touchend'
 };
 
 AFRAME.registerComponent('motion-capture-recorder', {

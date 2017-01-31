@@ -1,4 +1,6 @@
 /* global AFRAME, THREE */
+var log = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:info');
+
 AFRAME.registerComponent('motion-capture-replayer', {
   schema: {
     enabled: {default: true},
@@ -108,6 +110,9 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.currentPoseIndex = undefined;
   },
 
+  /**
+   * Called on tick.
+   */
   playRecording: function (delta) {
     var currentPose;
     var currentEvent
@@ -120,9 +125,6 @@ AFRAME.registerComponent('motion-capture-replayer', {
 
     // Poses.
     while (currentPose && this.currentPoseTime >= currentPose.timestamp) {
-      if (this.data.loop && this.currentPoseIndex === playingPoses.length - 1) {
-        this.restart();
-      }
       applyPose(this.el, currentPose);
       this.currentPoseIndex += 1;
       currentPose = playingPoses[this.currentPoseIndex];
@@ -133,6 +135,19 @@ AFRAME.registerComponent('motion-capture-replayer', {
       this.el.emit(currentEvent.name, currentEvent.detail);
       this.currentEventIndex += 1;
       currentEvent = this.playingEvents[this.currentEventIndex];
+    }
+
+    // End of recording reached with loop. Restore pose, reset state, restart.
+    if (this.data.loop && this.currentPoseIndex >= playingPoses.length) {
+      log('End of recording reached. Looping replay.');
+      this.restart();
+    }
+
+    // End of recording reached without loop. Stop replaying, restore pose, reset state.
+    if (!this.data.loop && this.currentPoseIndex >= playingPoses.length) {
+      log('End of recording reached.', this.el);
+      this.stopReplaying();
+      this.restart();
     }
   },
 
