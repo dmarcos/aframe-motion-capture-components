@@ -172,7 +172,7 @@ suite('avatar-recorder (replay from localStorage)', function () {
         camera: {poses: [{timestamp: 0}], events: []},
       }));
       setTimeout(() => {
-        sceneEl.setAttribute('avatar-recorder', 'autoPlay: true');
+        sceneEl.setAttribute('avatar-recorder', 'autoPlay: true; autoPlayDelay: 0');
         setTimeout(() => {
           assert.ok(sceneEl.components['avatar-replayer'], 'Replayer is set');
           assert.ok(sceneEl.components['avatar-replayer'].isReplaying);
@@ -183,7 +183,7 @@ suite('avatar-recorder (replay from localStorage)', function () {
   });
 
   test('autoPlays from localStorage with replayer set', function (done) {
-    sceneEl.setAttribute('avatar-replayer', 'autoPlay: true');
+    sceneEl.setAttribute('avatar-replayer', '');
     const startReplayingSpy = this.sinon.spy(sceneEl.components['avatar-replayer'],
                                              'startReplaying');
 
@@ -191,12 +191,12 @@ suite('avatar-recorder (replay from localStorage)', function () {
       camera: {poses: [{timestamp: 0}], events: []},
     }));
 
-    sceneEl.setAttribute('avatar-recorder', 'autoPlay: true');
+    sceneEl.setAttribute('avatar-recorder', {autoPlay: true, autoPlayDelay: 0});
     setTimeout(() => {
       assert.ok(startReplayingSpy.called);
       assert.ok(startReplayingSpy.getCalls()[0].args[0].camera.poses);
       done();
-    });
+    }, 50);
   });
 
   test('does not autoPlay if nothing in localStorage', function (done) {
@@ -449,7 +449,7 @@ suite('motion-capture-replayer', function () {
       component = el.components['motion-capture-replayer'];
       done();
     });
-    el.setAttribute('motion-capture-replayer', 'loop: false');
+    el.setAttribute('motion-capture-replayer', {loop: false});
   });
 
   test('plays poses', function () {
@@ -499,11 +499,18 @@ suite('motion-capture-replayer', function () {
       done();
     });
 
-    component.startReplayingEvents([
-      {timestamp: 100, name: 'buttondown', detail: {id: 'foo', state: true}},
-      {timestamp: 200, name: 'axismove', detail: {id: 'bar', axis: {x: 1, y: 1}}},
-      {timestamp: 250, name: 'touchend', detail: {id: 'baz', state: true}}
-    ]);
+    component.startReplaying({
+      events: [
+        {timestamp: 100, name: 'buttondown', detail: {id: 'foo', state: true}},
+        {timestamp: 200, name: 'axismove', detail: {id: 'bar', axis: {x: 1, y: 1}}},
+        {timestamp: 250, name: 'touchend', detail: {id: 'baz', state: true}}
+      ],
+      poses: [
+        {timestamp: 100, position: {}, rotation: {}},
+        {timestamp: 200, position: {}, rotation: {}},
+        {timestamp: 250, position: {}, rotation: {}}
+      ]
+    });
     component.tick(150, 50);
   });
 });

@@ -18,8 +18,8 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.onStrokeStarted = this.onStrokeStarted.bind(this);
     this.onStrokeEnded = this.onStrokeEnded.bind(this);
     this.discardedFrames = 0;
-    this.playingEvents = [];
-    this.playingPoses = [];
+    this.replayingEvents = [];
+    this.replayingPoses = [];
   },
 
   update: function (oldData) {
@@ -40,7 +40,8 @@ AFRAME.registerComponent('motion-capture-replayer', {
   },
 
   updateSrc: function (src) {
-    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+    var system = this.el.sceneEl.systems['motion-capture-recorder'];
+    system.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
   },
 
   onStrokeStarted: function(evt) {
@@ -55,7 +56,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
   },
 
   play: function () {
-    if (this.playingStroke) { this.startReplaying(this.playingStroke); }
+    if (this.replayingStroke) { this.startReplaying(this.replayingStroke); }
   },
 
   startReplaying: function (data) {
@@ -88,7 +89,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
   startReplayingPoses: function (poses) {
     this.isReplaying = true;
     this.currentPoseIndex = 0;
-    this.playingPoses = poses;
+    this.replayingPoses = poses;
     this.currentPoseTime = poses[0].timestamp;
   },
 
@@ -96,7 +97,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
     var firstEvent;
     this.isReplaying = true;
     this.currentEventIndex = 0;
-    this.playingEvents = events;
+    this.replayingEvents = events;
     firstEvent = events[0];
     if (!firstEvent) { return; }
     this.currentEventTime = firstEvent.timestamp;
@@ -105,7 +106,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
 
   // Reset player
   reset: function () {
-    this.playingPoses = null;
+    this.replayingPoses = null;
     this.currentTime = undefined;
     this.currentPoseIndex = undefined;
   },
@@ -116,10 +117,10 @@ AFRAME.registerComponent('motion-capture-replayer', {
   playRecording: function (delta) {
     var currentPose;
     var currentEvent
-    var playingPoses = this.playingPoses;
-    var playingEvents = this.playingEvents;
-    currentPose = playingPoses && playingPoses[this.currentPoseIndex]
-    currentEvent = playingEvents && playingEvents[this.currentEventIndex];
+    var replayingPoses = this.replayingPoses;
+    var replayingEvents = this.replayingEvents;
+    currentPose = replayingPoses && replayingPoses[this.currentPoseIndex]
+    currentEvent = replayingEvents && replayingEvents[this.currentEventIndex];
     this.currentPoseTime += delta;
     this.currentEventTime += delta;
 
@@ -127,18 +128,18 @@ AFRAME.registerComponent('motion-capture-replayer', {
     while (currentPose && this.currentPoseTime >= currentPose.timestamp) {
       applyPose(this.el, currentPose);
       this.currentPoseIndex += 1;
-      currentPose = playingPoses[this.currentPoseIndex];
+      currentPose = replayingPoses[this.currentPoseIndex];
     }
 
     // Events.
     while (currentEvent && this.currentEventTime >= currentEvent.timestamp) {
       this.el.emit(currentEvent.name, currentEvent.detail);
       this.currentEventIndex += 1;
-      currentEvent = this.playingEvents[this.currentEventIndex];
+      currentEvent = this.replayingEvents[this.currentEventIndex];
     }
 
     // End of recording reached.
-    if (this.currentPoseIndex >= playingPoses.length) {
+    if (this.currentPoseIndex >= replayingPoses.length) {
       // With loop. Restore pose, reset state, restart.
       if (this.data.loop) {
         log('End of recording reached. Looping replay.');
@@ -155,9 +156,9 @@ AFRAME.registerComponent('motion-capture-replayer', {
 
   restart: function () {
     this.currentPoseIndex = 0;
-    this.currentPoseTime = this.playingPoses[0].timestamp;
+    this.currentPoseTime = this.replayingPoses[0].timestamp;
     this.currentEventIndex = 0;
-    this.currentEventTime = this.playingEvents[0] ? this.playingEvents[0].timestamp : 0;
+    this.currentEventTime = this.replayingEvents[0] ? this.replayingEvents[0].timestamp : 0;
   },
 
   tick:  function (time, delta) {

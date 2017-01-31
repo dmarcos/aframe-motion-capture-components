@@ -8,6 +8,7 @@ AFRAME.registerComponent('avatar-recorder', {
   schema: {
     autoRecord: {default: false},
     autoPlay: {default: true},
+    autoPlayDelay: {default: 500},
     localStorage: {default: true},
     loop: {default: true},
     binaryFormat: {default: false}
@@ -89,7 +90,7 @@ AFRAME.registerComponent('avatar-recorder', {
       // Add timeout to let the scene load a bit before replaying.
       setTimeout(function () {
         self.replayRecording();
-      }, 500);
+      }, this.data.autoPlayDelay);
     }
     window.addEventListener('keydown', this.onKeyDown);
   },
