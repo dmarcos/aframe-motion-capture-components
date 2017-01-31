@@ -147,6 +147,22 @@ suite('avatar-recorder', function () {
       });
     });
   });
+
+  test('loads recording from file via query parameter w/ autoplay', function (done) {
+    sceneEl.setAttribute('avatar-replayer', {autoPlay: false});
+    replayComponent = sceneEl.components['avatar-replayer'];
+
+    this.sinon.stub(replayComponent, 'getSrcFromSearchParam', function () {
+      return '/base/tests/assets/test.json';
+    });
+
+    sceneEl.addEventListener('avatarreplayerstart', () => {
+      assert.ok(replayComponent.isReplaying);
+      assert.ok(replayComponent.replayData);
+      done();
+    });
+    sceneEl.setAttribute('avatar-recorder', {autoPlay: true});
+  });
 });
 
 suite('avatar-recorder (replay from localStorage)', function () {
@@ -172,7 +188,7 @@ suite('avatar-recorder (replay from localStorage)', function () {
         camera: {poses: [{timestamp: 0}], events: []},
       }));
       setTimeout(() => {
-        sceneEl.setAttribute('avatar-recorder', 'autoPlay: true; autoPlayDelay: 0');
+        sceneEl.setAttribute('avatar-recorder', {autoPlay: true, autoPlayDelay: 0});
         setTimeout(() => {
           assert.ok(sceneEl.components['avatar-replayer'], 'Replayer is set');
           assert.ok(sceneEl.components['avatar-replayer'].isReplaying);
@@ -183,13 +199,13 @@ suite('avatar-recorder (replay from localStorage)', function () {
   });
 
   test('autoPlays from localStorage with replayer set', function (done) {
-    sceneEl.setAttribute('avatar-replayer', '');
-    const startReplayingSpy = this.sinon.spy(sceneEl.components['avatar-replayer'],
-                                             'startReplaying');
-
     localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify({
       camera: {poses: [{timestamp: 0}], events: []},
     }));
+
+    sceneEl.setAttribute('avatar-replayer', '');
+    const startReplayingSpy = this.sinon.spy(sceneEl.components['avatar-replayer'],
+                                             'startReplaying');
 
     sceneEl.setAttribute('avatar-recorder', {autoPlay: true, autoPlayDelay: 0});
     setTimeout(() => {
@@ -276,7 +292,7 @@ suite('avatar-replayer', function () {
     });
   });
 
-  test('loads recording from external file', (done) => {
+  test('loads recording from file', function (done) {
     sceneEl.addEventListener('avatarreplayerstart', () => {
       assert.ok(component.isReplaying);
       assert.ok(component.replayData);
@@ -286,6 +302,23 @@ suite('avatar-replayer', function () {
       src: '/base/tests/assets/test.json',
       loop: false
     });
+  });
+
+  test('loads recording from file via query parameter', function (done) {
+    this.sinon.stub(component, 'getSrcFromSearchParam', function () {
+      return '/base/tests/assets/test.json';
+    });
+
+    sceneEl.addEventListener('avatarreplayerstart', () => {
+      assert.ok(component.isReplaying, 'Is replaying.');
+      assert.ok(component.replayData, 'Has replay data.');
+      done();
+    });
+
+    sceneEl.setAttribute('avatar-replayer', {autoPlay: true, loop: false});
+    assert.notOk(component.isReplaying, 'Not replaying yet.');
+    assert.notOk(component.replayData, 'No replay data yet.');
+
   });
 });
 

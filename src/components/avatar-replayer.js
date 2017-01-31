@@ -5,6 +5,7 @@ var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:warn');
 
 AFRAME.registerComponent('avatar-replayer', {
   schema: {
+    autoPlay: {default: true},
     src: {default: ''},
     loop: {default: true},
     spectatorMode: {default: false}
@@ -24,6 +25,14 @@ AFRAME.registerComponent('avatar-replayer', {
     }
 
     this.onKeyDown = this.onKeyDown.bind(this);
+  },
+
+  update: function (oldData) {
+    var data = this.data;
+    this.updateSpectatorCamera();
+    if (data.autoPlay) {
+      this.replayRecordingFromSource(oldData);
+    }
   },
 
   play: function () {
@@ -53,27 +62,65 @@ AFRAME.registerComponent('avatar-replayer', {
     this.el.setAttribute('avatar-player', 'spectatorMode', spectatorMode);
   },
 
-  update: function (oldData) {
-    var data = this.data;
-    this.updateSpectatorCamera();
-    if (!data.src || oldData.src === data.src) { return; }
-    this.updateSrc(data.src);
-  },
-
   updateSpectatorCamera: function () {
     var spectatorMode = this.data.spectatorMode;
     var spectatorCameraEl = this.spectatorCameraEl;
+
     if (!this.el.camera) { return; }
-    if (spectatorMode && spectatorCameraEl && spectatorCameraEl.getAttribute('camera').active) { return; }
+
+    if (spectatorMode && spectatorCameraEl &&
+        spectatorCameraEl.getAttribute('camera').active) {
+      return;
+    }
+
     if (spectatorMode && !spectatorCameraEl) {
       this.initSpectatorCamera();
       return;
     }
+
     if (spectatorMode) {
       spectatorCameraEl.setAttribute('camera', 'active', true);
     } else {
       this.currentCameraEl.setAttribute('camera', 'active', true);
     }
+  },
+
+  /**
+   * Check for recording sources and play.
+   */
+  replayRecordingFromSource: function (oldSrc) {
+    var data = this.data;
+    var localStorageData;
+    var src;
+    var queryParamSrc;
+
+    // From localStorage.
+    localStorageData = JSON.parse(localStorage.getItem('avatar-recording'));
+    if (localStorageData) {
+      log('Replaying from localStorage.');
+      this.startReplaying(localStorageData);
+      return;
+    }
+
+    // From file.
+    queryParamSrc = this.getSrcFromSearchParam();
+    src = data.src || queryParamSrc;
+    if (!src || oldSrc === data.src) { return; }
+
+    if (data.src) {
+      log('Replaying from component `src`', src);
+    } else if (queryParamSrc) {
+      log('Replaying from query parameter `avatar-recording`', src);
+    }
+
+    this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+  },
+
+  /**
+   * Defined for test stubbing.
+   */
+  getSrcFromSearchParam: function () {
+    return new URLSearchParams(window.location.search).get('avatar-recording');
   },
 
   initSpectatorCamera: function () {
@@ -98,10 +145,6 @@ AFRAME.registerComponent('avatar-replayer', {
     this.el.appendChild(spectatorCameraEl);
   },
 
-  updateSrc: function (src) {
-    this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
-  },
-
   /**
    * Set player on camera and controllers (marked by ID).
    *
@@ -116,6 +159,8 @@ AFRAME.registerComponent('avatar-replayer', {
     var self = this;
     var puppetEl;
     var sceneEl = this.el;
+
+    if (this.isReplaying) { return ;}
 
     // Wait for camera.
     if (!this.el.camera) {
@@ -137,6 +182,7 @@ AFRAME.registerComponent('avatar-replayer', {
         puppetEl = sceneEl.camera.el;
       } else {
         // Grab other entities.
+        log('Setting motion-capture-replayer on ' + key + '.');
         puppetEl = sceneEl.querySelector('#' + key);
         if (!puppetEl) {
           error('No element found with ID ' + key + '.');
@@ -144,7 +190,6 @@ AFRAME.registerComponent('avatar-replayer', {
         }
       }
 
-      log('Setting motion-capture-replayer on ' + key + '.');
       puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
       puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
     });
