@@ -100,28 +100,38 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   /**
-   * space = toggle recording, p = stop playing, c = clear local storage
+   * Keyboard shortcuts.
+   * space: toggle recording.
+   * p: toggle replaying.
+   * c: clear local storage.
+   * ctrl/shift/s: save recording to file.
    */
   onKeyDown: function (evt) {
     var key = evt.keyCode;
-    if (key !== 32 && key !== 80 && key !== 67) { return; }
-    switch (key) {
-      case 32: {
-        this.toggleRecording();
-        break;
-      }
 
-      case 80: {
-        this.toggleReplaying();
-        break;
-      }
+    // space.
+    if (key === 32) {
+      this.toggleRecording();
+      return;
+    }
 
-      case 67: {
-        log('Recording cleared from localStorage.');
-        this.recordingData = null;
-        localStorage.removeItem(LOCALSTORAGE_KEY);
-        break;
-      }
+    // p.
+    if (key === 80) {
+      this.toggleReplaying();
+      return;
+    }
+
+    // c.
+    if (key === 67) {
+      log('Recording cleared from localStorage.');
+      this.recordingData = null;
+      localStorage.removeItem(LOCALSTORAGE_KEY);
+      return;
+    }
+
+    // ctrl/shift/s.
+    if (evt.ctrlKey && evt.shiftKey && key === 83) {
+      this.saveRecordingFile(this.getJSONData());
     }
   },
 
@@ -208,7 +218,7 @@ AFRAME.registerComponent('avatar-recorder', {
     var type = this.data.binaryFormat ? 'application/octet-binary' : 'application/json';
     var blob = new Blob([jsonData], {type: type});
     var url = URL.createObjectURL(blob);
-    var fileName = 'player-recording-' + document.title + '-' + Date.now() + '.json';
+    var fileName = 'recording.json';
     var aEl = document.createElement('a');
     aEl.href = url;
     aEl.setAttribute('download', fileName);

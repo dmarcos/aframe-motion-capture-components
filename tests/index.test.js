@@ -323,9 +323,8 @@ suite('motion-capture-recorder', function () {
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'axismove');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {
-          id: 'foo', axis: {x: 1, y: 1}
-        });
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', axis: {x: 1, y: 1}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -335,11 +334,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('buttonchanged', {id: 'foo', state: true});
+      el.emit('buttonchanged', {id: 'foo', state: {value: 1}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'buttonchanged');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {value: 1}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -349,11 +349,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('buttonup', {id: 'foo', state: true});
+      el.emit('buttonup', {id: 'foo', state: {value: 1}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'buttonup');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {value: 1}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -363,11 +364,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('buttondown', {id: 'foo', state: true});
+      el.emit('buttondown', {id: 'foo', state: {value: 1}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'buttondown');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {value: 1}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -377,11 +379,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('touchstart', {id: 'foo', state: true});
+      el.emit('touchstart', {id: 'foo', state: {value: 1}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'touchstart');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {value: 1}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -391,11 +394,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('touchend', {id: 'foo', state: true});
+      el.emit('touchend', {id: 'foo', state: {value: 1}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'touchend');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {value: 1}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -457,6 +461,11 @@ suite('motion-capture-recorder', function () {
       });
     });
   });
+
+  test('handles empty data (e.g., one controller not tracking)', function () {
+    component.startRecording();
+    component.stopRecording();
+  });
 });
 
 suite('motion-capture-replayer', function () {
@@ -499,7 +508,7 @@ suite('motion-capture-replayer', function () {
   test('plays events', function (done) {
     el.addEventListener('buttondown', function (evt) {
       assert.equal(evt.detail.id, 'foo');
-      assert.ok(evt.detail.state);
+      assert.equal(evt.detail.state.value, 1);
       setTimeout(() => {
         component.tick(200, 50);
       });
@@ -516,15 +525,15 @@ suite('motion-capture-replayer', function () {
 
     el.addEventListener('touchend', function (evt) {
       assert.equal(evt.detail.id, 'baz');
-      assert.ok(evt.detail.state);
+      assert.equal(evt.detail.state.value, 1);
       done();
     });
 
     component.startReplaying({
       events: [
-        {timestamp: 100, name: 'buttondown', detail: {id: 'foo', state: true}},
+        {timestamp: 100, name: 'buttondown', detail: {id: 'foo', state: {value: 1}}},
         {timestamp: 200, name: 'axismove', detail: {id: 'bar', axis: {x: 1, y: 1}}},
-        {timestamp: 250, name: 'touchend', detail: {id: 'baz', state: true}}
+        {timestamp: 250, name: 'touchend', detail: {id: 'baz', state: {value: 1}}}
       ],
       poses: [
         {timestamp: 100, position: {}, rotation: {}},
@@ -533,5 +542,12 @@ suite('motion-capture-replayer', function () {
       ]
     });
     component.tick(150, 50);
+  });
+
+  test('handles empty data (e.g., one controller not tracking)', function () {
+    component.startReplaying({
+      events: [],
+      poses: []
+    });
   });
 });

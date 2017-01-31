@@ -87,6 +87,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
   },
 
   startReplayingPoses: function (poses) {
+    if (!poses.length) { return; }
     this.isReplaying = true;
     this.currentPoseIndex = 0;
     this.replayingPoses = poses;
@@ -95,6 +96,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
 
   startReplayingEvents: function (events) {
     var firstEvent;
+    if (!events.length) { return; }
     this.isReplaying = true;
     this.currentEventIndex = 0;
     this.replayingEvents = events;

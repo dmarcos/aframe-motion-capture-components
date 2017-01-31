@@ -56,6 +56,10 @@ AFRAME.registerComponent('motion-capture-recorder', {
 
     detail = {};
     EVENTS[evt.type].props.forEach(function buildDetail (propName) {
+      if (propName === 'state' && evt.detail.state !== undefined) {
+        detail.state = {value: evt.detail.state.value};
+        return;
+      }
       detail[propName] = evt.detail[propName];
     });
 
@@ -85,8 +89,8 @@ AFRAME.registerComponent('motion-capture-recorder', {
   getJSONData: function () {
     if (!this.recordedPoses) { return; }
     return {
-      poses: this.system.getStrokeJSON(this.recordedPoses),
-      events: this.recordedEvents
+      poses: this.system.getStrokeJSON(this.recordedPoses) || [],
+      events: this.recordedEvents || []
     };
   },
 
