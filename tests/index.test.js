@@ -275,6 +275,18 @@ suite('avatar-replayer', function () {
       done();
     });
   });
+
+  test('loads recording from external file', (done) => {
+    sceneEl.addEventListener('avatarreplayerstart', () => {
+      assert.ok(component.isReplaying);
+      assert.ok(component.replayData);
+      done();
+    });
+    sceneEl.setAttribute('avatar-replayer', {
+      src: '/base/tests/assets/test.json',
+      loop: false
+    });
+  });
 });
 
 suite('motion-capture-recorder', function () {

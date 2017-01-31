@@ -117,14 +117,16 @@ AFRAME.registerComponent('avatar-replayer', {
     var puppetEl;
     var sceneEl = this.el;
 
-    this.recordingData = replayData;
-    this.isReplaying = true;
+    // Wait for camera.
     if (!this.el.camera) {
       this.el.addEventListener('camera-set-active', function () {
         self.startReplaying(replayData);
       });
       return;
     }
+
+    this.replayData = replayData;
+    this.isReplaying = true;
 
     Object.keys(replayData).forEach(function setPlayer (key) {
       var puppetEl;
@@ -148,14 +150,15 @@ AFRAME.registerComponent('avatar-replayer', {
     });
 
     this.initSpectatorCamera();
+    sceneEl.emit('avatarreplayerstart');
   },
 
   stopReplaying: function () {
     var keys;
     var self = this;
-    if (!this.isReplaying || !this.recordingData) { return; }
+    if (!this.isReplaying || !this.replayData) { return; }
     this.isReplaying = false;
-    keys = Object.keys(this.recordingData);
+    keys = Object.keys(this.replayData);
     keys.forEach(function (key) {
       if (key === 'camera') {
         self.el.camera.el.components['motion-capture-replayer'].stopReplaying();
