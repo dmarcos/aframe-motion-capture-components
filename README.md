@@ -7,11 +7,21 @@ development ergonomics or any other applications of motion capture.
 
 ### Usage
 
-#### WebVR Recording
+#### Avatar Recording
 
-Set the `avatar-recorder` on the scene. Make sure your controllers have `id`s.
-Then hit `<space>` to toggle recording. A JSON will automatically be downloaded
-once the recording finishes.
+An "avatar" is the representation of a user. Use the `avatar-recorder` to
+record headset and tracked controller poses as well as controller events (i.e.,
+button presses and touches).
+
+1. Set the `avatar-recorder` component on the `<a-scene>` element.
+2. Make sure your controllers have `id`s.
+3. Hit `<space>` to start recording.
+4. Record movements and controller events.
+5. Hit `<space>>` again to stop recording.
+6. The recording will play from `localStorage`. Hit `<ctrl> + <shift> + s` to save the
+   recording to a file.
+
+Hit `c` on the keyboard to clear the recording from `localStorage`.
 
 ```html
 <a-scene avatar-recorder>
@@ -20,10 +30,37 @@ once the recording finishes.
 </a-scene>
 ```
 
-#### WebVR Replaying
+#### Avatar Replaying
 
-Specify the path to a captured WebVR recording JSON file. Hit `p` to toggle
-playback.
+The `avatar-recorder` will automatically set the `avatar-replayer` component.
+Though we can specify the `avatar-replayer` explicitly if we want to configure
+it or if we don't need recording (i.e., production):
+
+```html
+<a-scene avatar-replayer="src: recording.json; loop: true">
+  <a-entity id="controller1" hand-controls"></a-entity>
+  <a-entity id="controller2" hand-controls"></a-entity>
+</a-scene>
+```
+
+##### From localStorage
+
+By default, the `avatar-recorder` will save the recording into `localStorage`
+which the `avatar-replayer` will replay from by default.
+
+Hit `p` to toggle playback.
+
+##### From File
+
+We can specify the path to a recording file via the `avatar-recording` **query
+parameter** in the URL:
+
+```html
+https://foo.bar?avatar-recording=path/to/recording.json
+https://foo.bar?avatar-recording=path/to/anotherRecording.json
+```
+
+Or we can specify the path to a recording file via the `src` property:
 
 ```html
 <a-scene avatar-replayer="src: recording.json">
@@ -36,37 +73,41 @@ playback.
 
 #### Keyboard Shortcuts
 
-| Key   | Description                                   |
-|-------|-----------------------------------------------|
-| space | Toggle recording.                             |
-| c     | Clear recording from localStorage and memory. |
-| p     | Toggle replaying.                             |
+| Key          | Description                                   |
+|--------------|-----------------------------------------------|
+| space        | Toggle recording.                             |
+| c            | Clear recording from localStorage and memory. |
+| p            | Toggle replaying.                             |
+| ctrl/shift/s | Save recording to file.                       |
 
 #### avatar-recorder
 
-| Property     | Description | Default Value |
-| --------     | ----------- | ------------- |
-| autoPlay     |             | true          |
-| autoRecord   |             | false         |
-| binaryFormat |             | false         |
-| localStorage |             | false         |
+| Property      | Description | Default Value |
+| --------      | ----------- | ------------- |
+| autoPlay      |             | true          |
+| autoPlayDelay |             | 500           |
+| autoRecord    |             | false         |
+| binaryFormat  |             | false         |
+| localStorage  |             | true          |
 
 #### avatar-replayer
 
 | Property      | Description | Default Value |
 | --------      | ----------- | ------------- |
-| loop          |             | false         |
+| autoPlay      |             | true          |
+| loop          |             | true          |
 | src           |             | ''            |
 | spectatorMode |             | false         |
 
 #### motion-capture-replayer
 
-| Property   | Description | Default Value |
-| --------   | ----------- | ------------- |
-| enabled    |             | true          |
-| loop       |             | true          |
-| recorderEl | Selector.   | null          |
-| src        |             | ''            |
+| Property        | Description | Default Value |
+| --------        | ----------- | ------------- |
+| enabled         |             | true          |
+| loop            |             | true          |
+| recorderEl      | Selector.   | null          |
+| src             |             | ''            |
+| spectatorCamera |             | false         |
 
 #### motion-capture-recorder
 
