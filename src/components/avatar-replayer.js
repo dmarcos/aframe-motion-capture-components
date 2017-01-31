@@ -117,7 +117,7 @@ AFRAME.registerComponent('avatar-replayer', {
     var puppetEl;
     var sceneEl = this.el;
 
-    this.recordingreplayData = replayData;
+    this.recordingData = replayData;
     this.isReplaying = true;
     if (!this.el.camera) {
       this.el.addEventListener('camera-set-active', function () {

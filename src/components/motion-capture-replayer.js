@@ -137,14 +137,16 @@ AFRAME.registerComponent('motion-capture-replayer', {
       currentEvent = this.playingEvents[this.currentEventIndex];
     }
 
-    // End of recording reached with loop. Restore pose, reset state, restart.
-    if (this.data.loop && this.currentPoseIndex >= playingPoses.length) {
-      log('End of recording reached. Looping replay.');
-      this.restart();
-    }
+    // End of recording reached.
+    if (this.currentPoseIndex >= playingPoses.length) {
+      // With loop. Restore pose, reset state, restart.
+      if (this.data.loop) {
+        log('End of recording reached. Looping replay.');
+        this.restart();
+        return;
+      }
 
-    // End of recording reached without loop. Stop replaying, restore pose, reset state.
-    if (!this.data.loop && this.currentPoseIndex >= playingPoses.length) {
+      // Without loop. Stop replaying, restore pose, reset state.
       log('End of recording reached.', this.el);
       this.stopReplaying();
       this.restart();
