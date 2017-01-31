@@ -436,6 +436,27 @@ suite('motion-capture-recorder', function () {
       component.saveCapture();
     });
   });
+
+  /**
+   * In manual motion capture (i.e., not avatar recording), the trigger is used to
+   * toggle recording. In avatar recording, trigger should not affect recording.
+   */
+  test('triggerdown does not affect avatar recording', function (done) {
+    assert.equal(component.recordedEvents.length, 0);
+    component.tick(100);
+    component.isRecording = true;
+    el.emit('buttonchanged', {id: 1, state: {value: 0}});
+    setTimeout(() => {
+      component.tick(100);
+      el.emit('buttonchanged', {id: 1, state: {value: 1}});
+      setTimeout(() => {
+        component.tick(100);
+        assert.equal(component.recordedEvents.length, 2);
+        assert.equal(component.recordedPoses.length, 2);
+        done();
+      });
+    });
+  });
 });
 
 suite('motion-capture-replayer', function () {
