@@ -191,7 +191,10 @@ AFRAME.registerComponent('avatar-replayer', {
       }
 
       puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
-      puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
+
+      // Clone because detail objects will be modified by browser.
+      puppetEl.components['motion-capture-replayer'].startReplaying(
+        AFRAME.utils.clone(replayData[key]));
     });
 
     this.initSpectatorCamera();

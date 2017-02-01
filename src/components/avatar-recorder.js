@@ -118,6 +118,7 @@ AFRAME.registerComponent('avatar-recorder', {
    */
   onKeyDown: function (evt) {
     var key = evt.keyCode;
+    var replayer = this.el.components['avatar-replayer'];
 
     // space.
     if (key === 32) {
@@ -141,7 +142,11 @@ AFRAME.registerComponent('avatar-recorder', {
 
     // ctrl/shift/s.
     if (evt.ctrlKey && evt.shiftKey && key === 83) {
-      this.saveRecordingFile(this.getJSONData());
+      if (replayer && replayer.replayData) {
+        this.saveRecordingFile(replayer.replayData);
+      } else {
+        this.saveRecordingFile(this.getJSONData());
+      }
     }
   },
 
