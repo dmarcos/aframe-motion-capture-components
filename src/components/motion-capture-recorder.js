@@ -1,4 +1,5 @@
 /* global AFRAME, THREE */
+var log = AFRAME.utils.debug('aframe-motion-capture:motion-capture-recorder:info');
 
 var EVENTS = {
   axismove: {id: 0, props: ['id', 'axis']},
@@ -38,12 +39,15 @@ AFRAME.registerComponent('motion-capture-recorder', {
     var el = this.el;
     this.recordEvent = this.recordEvent.bind(this);
     el.addEventListener('axismove', this.recordEvent);
-    el.addEventListener('buttonchanged', this.onTriggerChanged.bind(this));
     el.addEventListener('buttonchanged', this.recordEvent);
     el.addEventListener('buttonup', this.recordEvent);
     el.addEventListener('buttondown', this.recordEvent);
     el.addEventListener('touchstart', this.recordEvent);
     el.addEventListener('touchend', this.recordEvent);
+
+    // TODO: Introduce back in, but decoupled and configurable.
+    // For hand-controlled recording, but not desired for avatar recording.
+    // el.addEventListener('buttonchanged', this.onTriggerChanged.bind(this));
   },
 
   recordEvent: function (evt) {
@@ -52,6 +56,10 @@ AFRAME.registerComponent('motion-capture-recorder', {
 
     detail = {};
     EVENTS[evt.type].props.forEach(function buildDetail (propName) {
+      if (propName === 'state' && evt.detail.state !== undefined) {
+        detail.state = {value: evt.detail.state.value};
+        return;
+      }
       detail[propName] = evt.detail[propName];
     });
 
@@ -66,8 +74,10 @@ AFRAME.registerComponent('motion-capture-recorder', {
     var data = this.data;
     var value;
     if (!data.enabled || data.autoRecord) { return; }
-    // Not Trigger
+
+    // Not trigger.
     if (evt.detail.id !== 1) { return; }
+
     value = evt.detail.state.value;
     if (value <= 0.1) {
       if (this.isRecording) { this.stopRecording(); }
@@ -79,8 +89,8 @@ AFRAME.registerComponent('motion-capture-recorder', {
   getJSONData: function () {
     if (!this.recordedPoses) { return; }
     return {
-      poses: this.system.getStrokeJSON(this.recordedPoses),
-      events: this.recordedEvents
+      poses: this.system.getStrokeJSON(this.recordedPoses) || [],
+      events: this.recordedEvents || []
     };
   },
 
@@ -169,6 +179,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
   stopRecording: function () {
     var el = this.el;
     if (!this.isRecording) { return; }
+    log('Recorded ' + this.recordedPoses.length + ' poses.', el);
     el.emit('strokeended', {poses: this.recordedPoses});
     this.isRecording = false;
     if (!this.data.visibleStroke || this.data.persistStroke) { return; }

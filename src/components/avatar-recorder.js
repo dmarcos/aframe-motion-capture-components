@@ -8,8 +8,8 @@ AFRAME.registerComponent('avatar-recorder', {
   schema: {
     autoRecord: {default: false},
     autoPlay: {default: true},
+    autoPlayDelay: {default: 500},
     localStorage: {default: true},
-    loop: {default: true},
     binaryFormat: {default: false}
   },
 
@@ -38,19 +38,38 @@ AFRAME.registerComponent('avatar-recorder', {
     }
   },
 
+  /**
+   * Replay recording immediately after recording.
+   * Differs from `autoPlayRecording` in that it uses recorded `this.recordingData` and
+   * overrides any recording sources that `avatar-replayer` may have defined.
+   */
   replayRecording: function () {
-    var data = this.data;
-    var el = this.el;
-    var replayData;
-
-    data = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
-    if (!data) { return; }
-
-    log('Replaying recording.');
-    el.setAttribute('avatar-replayer', {loop: data.loop});
-    el.components['avatar-replayer'].startReplaying(data);
+    var sceneEl = this.el;
+    log('Replaying recording just taken.');
+    sceneEl.setAttribute('avatar-replayer', {autoPlay: false});
+    sceneEl.components['avatar-replayer'].startReplaying(this.recordingData);
   },
 
+  /**
+   * Replay recording on initialization as `autoPlay`.
+   * Differs from `replayRecording` in that this lets `avatar-replayer` decide where to
+   * source its recording.
+   */
+  autoReplayRecording: function () {
+    var data = this.data;
+    var sceneEl = this.el;
+
+    if (!data.autoPlay) { return; }
+
+    // Add timeout to let the scene load a bit before replaying.
+    setTimeout(function () {
+      sceneEl.setAttribute('avatar-replayer', {autoPlay: true});
+    }, data.autoPlayDelay);
+  },
+
+  /**
+   * Tell `avatar-replayer` to stop recording.
+   */
   stopReplaying: function () {
     var avatarPlayer = this.el.components['avatar-replayer'];
     if (!avatarPlayer) { return; }
@@ -82,16 +101,8 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   play: function () {
-    var self = this;
-    var sceneEl = this.el;
-
-    if (this.data.autoPlay) {
-      // Add timeout to let the scene load a bit before replaying.
-      setTimeout(function () {
-        self.replayRecording();
-      }, 500);
-    }
     window.addEventListener('keydown', this.onKeyDown);
+    this.autoReplayRecording();
   },
 
   pause: function () {
@@ -99,27 +110,42 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   /**
-   * space = toggle recording, p = stop playing, c = clear local storage
+   * Keyboard shortcuts.
+   * space: toggle recording.
+   * p: toggle replaying.
+   * c: clear local storage.
+   * ctrl/shift/s: save recording to file.
    */
   onKeyDown: function (evt) {
     var key = evt.keyCode;
-    if (key !== 32 && key !== 80 && key !== 67) { return; }
-    switch (key) {
-      case 32: {
-        this.toggleRecording();
-        break;
-      }
+    var replayer = this.el.components['avatar-replayer'];
 
-      case 80: {
-        this.toggleReplaying();
-        break;
-      }
+    // space.
+    if (key === 32) {
+      this.toggleRecording();
+      return;
+    }
 
-      case 67: {
-        log('Recording cleared from localStorage.');
-        this.recordingData = null;
-        localStorage.removeItem(LOCALSTORAGE_KEY);
-        break;
+    // p.
+    if (key === 80) {
+      this.toggleReplaying();
+      return;
+    }
+
+    // c.
+    if (key === 67) {
+      log('Recording cleared from localStorage.');
+      this.recordingData = null;
+      localStorage.removeItem(LOCALSTORAGE_KEY);
+      return;
+    }
+
+    // ctrl/shift/s.
+    if (evt.ctrlKey && evt.shiftKey && key === 83) {
+      if (replayer && replayer.replayData) {
+        this.saveRecordingFile(replayer.replayData);
+      } else {
+        this.saveRecordingFile(this.getJSONData());
       }
     }
   },
@@ -207,7 +233,7 @@ AFRAME.registerComponent('avatar-recorder', {
     var type = this.data.binaryFormat ? 'application/octet-binary' : 'application/json';
     var blob = new Blob([jsonData], {type: type});
     var url = URL.createObjectURL(blob);
-    var fileName = 'player-recording-' + document.title + '-' + Date.now() + '.json';
+    var fileName = 'recording-' + document.title.toLowerCase() + '.json';
     var aEl = document.createElement('a');
     aEl.href = url;
     aEl.setAttribute('download', fileName);
