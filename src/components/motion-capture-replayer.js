@@ -1,6 +1,4 @@
-/* global AFRAME, THREE */
-var log = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:info');
-
+/* global THREE, AFRAME  */
 AFRAME.registerComponent('motion-capture-replayer', {
   schema: {
     enabled: {default: true},
@@ -48,19 +46,17 @@ AFRAME.registerComponent('motion-capture-replayer', {
   },
 
   onStrokeEnded: function(evt) {
-    this.startReplaying({
-      poses: evt.detail.poses,
-      events: []
-    });
+    this.startReplayingPoses(evt.detail.poses);
   },
 
   play: function () {
-    if (this.playingStroke) { this.startReplaying(this.playingStroke); }
+    if (this.playingStroke) { this.playStroke(this.playingStroke); }
   },
 
   startReplaying: function (data) {
     this.ignoredFrames = 0;
     this.storeInitialPose();
+    this.isReplaying = true;
     this.startReplayingPoses(data.poses);
     this.startReplayingEvents(data.events);
   },
@@ -88,6 +84,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
   startReplayingPoses: function (poses) {
     this.isReplaying = true;
     this.currentPoseIndex = 0;
+    if (poses.length === 0) { return; }
     this.playingPoses = poses;
     this.currentPoseTime = poses[0].timestamp;
   },
@@ -96,11 +93,11 @@ AFRAME.registerComponent('motion-capture-replayer', {
     var firstEvent;
     this.isReplaying = true;
     this.currentEventIndex = 0;
-    this.playingEvents = events;
+    if (events.length === 0) { return; }
     firstEvent = events[0];
-    if (!firstEvent) { return; }
+    this.playingEvents = events;
     this.currentEventTime = firstEvent.timestamp;
-    this.el.emit(firstEvent.name, firstEvent.detail);
+    this.el.emit(firstEvent.name, firstEvent);
   },
 
   // Reset player
@@ -122,45 +119,33 @@ AFRAME.registerComponent('motion-capture-replayer', {
     currentEvent = playingEvents && playingEvents[this.currentEventIndex];
     this.currentPoseTime += delta;
     this.currentEventTime += delta;
-
-    // Poses.
-    while (currentPose && this.currentPoseTime >= currentPose.timestamp) {
-      applyPose(this.el, currentPose);
-      this.currentPoseIndex += 1;
-      currentPose = playingPoses[this.currentPoseIndex];
+    // determine next pose
+    while ((currentPose && this.currentPoseTime >= currentPose.timestamp) ||
+           (currentEvent && this.currentPoseTime >= currentEvent.timestamp)) {
+      // pose
+      if (currentPose && this.currentPoseTime >= currentPose.timestamp) {
+        if (this.currentPoseIndex === playingPoses.length && this.data.loop) {
+          this.currentPoseIndex = 0;
+          this.currentPoseTime = playingPoses[0].timestamp;
+        }
+        applyPose(this.el, currentPose);
+        this.currentPoseIndex += 1;
+        currentPose = playingPoses[this.currentPoseIndex];
+      }
+      // event
+      if (currentEvent && this.currentPoseTime >= currentEvent.timestamp) {
+        if (this.currentEventIndex === playingEvents.length && this.data.loop) {
+          this.currentEventIndex = 0;
+          this.currentEventTime = playingEvents[0].timestamp;
+        }
+        this.el.emit(currentEvent.name, {id: currentEvent.detail.id});
+        this.currentEventIndex += 1;
+        currentEvent = this.playingEvents[this.currentEventIndex];
+      }
     }
-
-    // Events.
-    while (currentEvent && this.currentEventTime >= currentEvent.timestamp) {
-      this.el.emit(currentEvent.name, currentEvent.detail);
-      this.currentEventIndex += 1;
-      currentEvent = this.playingEvents[this.currentEventIndex];
-    }
-
-    // End of recording reached with loop. Restore pose, reset state, restart.
-    if (this.data.loop && this.currentPoseIndex >= playingPoses.length) {
-      log('End of recording reached. Looping replay.');
-      this.restart();
-    }
-
-    // End of recording reached without loop. Stop replaying, restore pose, reset state.
-    if (!this.data.loop && this.currentPoseIndex >= playingPoses.length) {
-      log('End of recording reached.', this.el);
-      this.stopReplaying();
-      this.restart();
-    }
-  },
-
-  restart: function () {
-    this.currentPoseIndex = 0;
-    this.currentPoseTime = this.playingPoses[0].timestamp;
-    this.currentEventIndex = 0;
-    this.currentEventTime = this.playingEvents[0] ? this.playingEvents[0].timestamp : 0;
   },
 
   tick:  function (time, delta) {
-    var deltaTime;
-
     // Ignore the first couple of frames that come from window.RAF on Firefox.
     if (this.ignoredFrames !== 2 && !window.debug) {
       this.ignoredFrames++;

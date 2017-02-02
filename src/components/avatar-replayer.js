@@ -13,17 +13,21 @@ AFRAME.registerComponent('avatar-replayer', {
   init: function () {
     var sceneEl = this.el;
     var self = this;
+    this.storeInitialCamera = this.storeInitialCamera.bind(this);
 
     // Prepare camera.
     if (sceneEl.camera) {
       this.currentCameraEl = sceneEl.camera.el;
     } else {
-      this.el.addEventListener('camera-set-active', function () {
-        self.currentCameraEl = sceneEl.camera.el;
-      });
+      this.el.addEventListener('camera-set-active', this.storeInitialCamera);
     }
 
     this.onKeyDown = this.onKeyDown.bind(this);
+  },
+
+  storeInitialCamera: function () {
+    this.currentCameraEl = this.el.camera.el;
+    this.el.removeEventListener('camera-set-active', this.storeInitialCamera);
   },
 
   play: function () {
@@ -39,9 +43,9 @@ AFRAME.registerComponent('avatar-replayer', {
    */
   onKeyDown: function (evt) {
     var key = evt.keyCode;
-    if ( key !== 81) { return; }
+    if (key !== 9) { return; }
     switch (key) {
-      case 81: {
+      case 9: {
         this.toggleSpectatorCamera();
         break;
       }
@@ -49,8 +53,8 @@ AFRAME.registerComponent('avatar-replayer', {
   },
 
   toggleSpectatorCamera: function () {
-    var spectatorMode = !this.el.getAttribute('avatar-player').spectatorMode;
-    this.el.setAttribute('avatar-player', 'spectatorMode', spectatorMode);
+    var spectatorMode = !this.el.getAttribute('avatar-replayer').spectatorMode;
+    this.el.setAttribute('avatar-replayer', 'spectatorMode', spectatorMode);
   },
 
   update: function (oldData) {
