@@ -3,7 +3,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
   schema: {
     enabled: {default: true},
     recorderEl: {type: 'selector'},
-    loop: {default: true},
+    loop: {default: false},
     src: {default: ''},
     spectatorCamera: {default: false}
   },
@@ -15,6 +15,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.currentEventIndex = 0;
     this.onStrokeStarted = this.onStrokeStarted.bind(this);
     this.onStrokeEnded = this.onStrokeEnded.bind(this);
+    this.el.addEventListener('pause', this.playComponent.bind(this));
     this.discardedFrames = 0;
     this.playingEvents = [];
     this.playingPoses = [];
@@ -23,6 +24,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
   update: function (oldData) {
     var data = this.data;
     this.updateRecorder(data.recorderEl, oldData.recorderEl);
+    if (!this.el.isPlaying) { this.playComponent(); }
     if (oldData.src === data.src) { return; }
     if (data.src) { this.updateSrc(data.src); }
   },
@@ -53,17 +55,24 @@ AFRAME.registerComponent('motion-capture-replayer', {
     if (this.playingStroke) { this.playStroke(this.playingStroke); }
   },
 
+  playComponent: function () {
+    this.el.isPlaying = true;
+    this.play();
+  },
+
   startReplaying: function (data) {
     this.ignoredFrames = 0;
     this.storeInitialPose();
     this.isReplaying = true;
     this.startReplayingPoses(data.poses);
     this.startReplayingEvents(data.events);
+    this.el.emit('replayingstarted');
   },
 
   stopReplaying: function () {
     this.isReplaying = false;
     this.restoreInitialPose();
+    this.el.emit('replayingstopped');
   },
 
   storeInitialPose: function () {
@@ -124,9 +133,13 @@ AFRAME.registerComponent('motion-capture-replayer', {
            (currentEvent && this.currentPoseTime >= currentEvent.timestamp)) {
       // pose
       if (currentPose && this.currentPoseTime >= currentPose.timestamp) {
-        if (this.currentPoseIndex === playingPoses.length && this.data.loop) {
-          this.currentPoseIndex = 0;
-          this.currentPoseTime = playingPoses[0].timestamp;
+        if (this.currentPoseIndex === playingPoses.length - 1) {
+          if (this.data.loop) {
+            this.currentPoseIndex = 0;
+            this.currentPoseTime = playingPoses[0].timestamp;
+          } else {
+            this.stopReplaying();
+          }
         }
         applyPose(this.el, currentPose);
         this.currentPoseIndex += 1;

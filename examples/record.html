@@ -12,7 +12,8 @@
     <script src="js/shaders/skyGradient.js"></script>
   </head>
   <body>
-    <a-scene fog="color: #bc483e; near: 0; far: 65;" avatar-recorder>
+    <a-scene fog="color: #bc483e; near: 0; far: 65;"
+             avatar-recorder="spectatorPlay: true; spectatorPosition: 0 1.6 5">
       <a-assets>
         <a-mixin id="cube"
                  geometry="primitive: box; height: 0.30; width: 0.30; depth: 0.30"

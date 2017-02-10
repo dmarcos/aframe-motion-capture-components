@@ -6,27 +6,34 @@ var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:warn');
 AFRAME.registerComponent('avatar-replayer', {
   schema: {
     src: {default: ''},
-    loop: {default: true},
-    spectatorMode: {default: false}
+    loop: {default: false},
+    spectatorMode: {default: false},
+    spectatorPosition: {default: '0 1.6 2', type: 'vec3'}
   },
 
   init: function () {
     var sceneEl = this.el;
-    var self = this;
     this.storeInitialCamera = this.storeInitialCamera.bind(this);
-
+    this.initSpectatorCamera();
     // Prepare camera.
     if (sceneEl.camera) {
-      this.currentCameraEl = sceneEl.camera.el;
+      this.storeInitialCamera();
     } else {
       this.el.addEventListener('camera-set-active', this.storeInitialCamera);
     }
-
+    this.el.addEventListener('replayingstopped', this.restoreCamera.bind(this));
     this.onKeyDown = this.onKeyDown.bind(this);
+  },
+
+  restoreCamera: function() {
+    this.currentCameraEl.play();
+    this.currentCameraEl.setAttribute('camera', 'active', true);
   },
 
   storeInitialCamera: function () {
     this.currentCameraEl = this.el.camera.el;
+    this.currentCameraEl.removeAttribute('data-aframe-default-camera');
+    this.el.appendChild(this.spectatorCameraEl);
     this.el.removeEventListener('camera-set-active', this.storeInitialCamera);
   },
 
@@ -39,7 +46,7 @@ AFRAME.registerComponent('avatar-replayer', {
   },
 
   /**
-   * space = toggle recording, p = stop playing, c = clear local storage
+   * tab = toggle spectator camera
    */
   onKeyDown: function (evt) {
     var key = evt.keyCode;
@@ -53,53 +60,21 @@ AFRAME.registerComponent('avatar-replayer', {
   },
 
   toggleSpectatorCamera: function () {
-    var spectatorMode = !this.el.getAttribute('avatar-replayer').spectatorMode;
-    this.el.setAttribute('avatar-replayer', 'spectatorMode', spectatorMode);
+    this.el.setAttribute('avatar-replayer', 'spectatorMode', !this.data.spectatorMode);
   },
 
   update: function (oldData) {
     var data = this.data;
-    this.updateSpectatorCamera();
     if (!data.src || oldData.src === data.src) { return; }
     this.updateSrc(data.src);
   },
 
-  updateSpectatorCamera: function () {
-    var spectatorMode = this.data.spectatorMode;
-    var spectatorCameraEl = this.spectatorCameraEl;
-    if (!this.el.camera) { return; }
-    if (spectatorMode && spectatorCameraEl && spectatorCameraEl.getAttribute('camera').active) { return; }
-    if (spectatorMode && !spectatorCameraEl) {
-      this.initSpectatorCamera();
-      return;
-    }
-    if (spectatorMode) {
-      spectatorCameraEl.setAttribute('camera', 'active', true);
-    } else {
-      this.currentCameraEl.setAttribute('camera', 'active', true);
-    }
-  },
-
   initSpectatorCamera: function () {
-    var spectatorCameraEl;
-    var currentCameraEl = this.currentCameraEl = this.el.camera.el;
-    var currentCameraPosition = currentCameraEl.getAttribute('position');
-    if (this.spectatorCameraEl || !this.data.spectatorMode) { return; }
-    spectatorCameraEl = this.spectatorCameraEl = document.createElement('a-entity');
+    var spectatorCameraEl = this.spectatorCameraEl = document.createElement('a-entity');
     spectatorCameraEl.id = 'spectatorCamera';
     spectatorCameraEl.setAttribute('camera', '');
-    spectatorCameraEl.setAttribute('position', {
-      x: currentCameraPosition.x,
-      y: currentCameraPosition.y,
-      z: currentCameraPosition.z + 1
-    });
     spectatorCameraEl.setAttribute('look-controls', '');
     spectatorCameraEl.setAttribute('wasd-controls', '');
-    currentCameraEl.setAttribute('geometry', {primitive: 'box', height: 0.3, width: 0.3, depth: 0.2});
-    currentCameraEl.setAttribute('material', {color: 'pink'});
-    currentCameraEl.removeAttribute('data-aframe-default-camera');
-    currentCameraEl.addEventListener('pause', function () { currentCameraEl.play(); });
-    this.el.appendChild(spectatorCameraEl);
   },
 
   updateSrc: function (src) {
@@ -118,9 +93,8 @@ AFRAME.registerComponent('avatar-replayer', {
   startReplaying: function (replayData) {
     var data = this.data;
     var self = this;
-    var puppetEl;
+    var puppetEl = this.puppetEl;
     var sceneEl = this.el;
-
     this.recordingreplayData = replayData;
     this.isReplaying = true;
     if (!this.el.camera) {
@@ -129,14 +103,15 @@ AFRAME.registerComponent('avatar-replayer', {
       });
       return;
     }
-
+    if (puppetEl) { puppetEl.removeAttribute('motion-capture-replayer'); }
     Object.keys(replayData).forEach(function setPlayer (key) {
       var puppetEl;
 
       if (key === 'camera') {
         // Grab camera.
         log('Setting motion-capture-replayer on camera.');
-        puppetEl = sceneEl.camera.el;
+        debugger;
+        puppetEl = self.data.spectatorMode ? self.currentCameraEl : sceneEl.camera.el;
       } else {
         // Grab other entities.
         puppetEl = sceneEl.querySelector('#' + key);
@@ -149,9 +124,36 @@ AFRAME.registerComponent('avatar-replayer', {
       log('Setting motion-capture-replayer on ' + key + '.');
       puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
       puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
+      this.puppetEl = puppetEl;
     });
+    this.configureCamera();
+  },
 
-    this.initSpectatorCamera();
+  configureCamera: function () {
+    var data = this.data;
+    var currentCameraEl = this.currentCameraEl;
+    var spectatorCameraEl = this.spectatorCameraEl;
+    if (!spectatorCameraEl.hasLoaded) {
+      spectatorCameraEl.addEventListener('loaded', this.configureCamera.bind(this));
+      return;
+    }
+    if (data.spectatorMode) {
+      spectatorCameraEl.setAttribute('position', data.spectatorPosition);
+      spectatorCameraEl.setAttribute('camera', 'active', true);
+    } else {
+      currentCameraEl.setAttribute('camera', 'active', true);
+    }
+    this.configureHeadGeometry();
+  },
+
+  configureHeadGeometry: function() {
+    var currentCameraEl = this.currentCameraEl;
+    // Remove previous visual appearance.
+    currentCameraEl.removeAttribute('geometry');
+    currentCameraEl.removeAttribute('material');
+    if (!this.data.spectatorMode) { return; }
+    currentCameraEl.setAttribute('geometry', {primitive: 'box', height: 0.3, width: 0.3, depth: 0.2});
+    currentCameraEl.setAttribute('material', {color: 'pink'});
   },
 
   stopReplaying: function () {

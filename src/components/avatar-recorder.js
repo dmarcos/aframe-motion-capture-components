@@ -8,9 +8,10 @@ AFRAME.registerComponent('avatar-recorder', {
   schema: {
     autoRecord: {default: false},
     autoPlay: {default: true},
+    spectatorPlay: {default: false},
+    spectatorPosition: {default: '0 1.6 0', type: 'vec3'},
     localStorage: {default: true},
     loop: {default: true},
-    binaryFormat: {default: false}
   },
 
   init: function () {
@@ -41,14 +42,17 @@ AFRAME.registerComponent('avatar-recorder', {
   replayRecording: function () {
     var data = this.data;
     var el = this.el;
-    var replayData;
 
-    data = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
-    if (!data) { return; }
-
+    var recordingData = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
+    if (!recordingData) { return; }
+    debugger;
     log('Replaying recording.');
-    el.setAttribute('avatar-replayer', {loop: data.loop});
-    el.components['avatar-replayer'].startReplaying(data);
+    el.setAttribute('avatar-replayer', {
+      loop: data.loop,
+      spectatorMode: data.spectatorPlay,
+      spectatorPosition: data.spectatorPosition
+    });
+    el.components['avatar-replayer'].startReplaying(recordingData);
   },
 
   stopReplaying: function () {
@@ -56,6 +60,7 @@ AFRAME.registerComponent('avatar-recorder', {
     if (!avatarPlayer) { return; }
     log('Stopped replaying.');
     avatarPlayer.stopReplaying();
+    this.el.setAttribute('avatar-replayer', 'spectatorMode', false);
   },
 
   /**
@@ -83,7 +88,6 @@ AFRAME.registerComponent('avatar-recorder', {
 
   play: function () {
     var self = this;
-    var sceneEl = this.el;
 
     if (this.data.autoPlay) {
       // Add timeout to let the scene load a bit before replaying.

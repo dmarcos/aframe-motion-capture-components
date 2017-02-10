@@ -48,8 +48,6 @@ AFRAME.registerComponent('stroke', {
     var direction = new THREE.Vector3();
     var positionA = new THREE.Vector3();
     var positionB = new THREE.Vector3();
-    var directionA = new THREE.Vector3();
-    var directionB = new THREE.Vector3();
     return function (position, orientation, timestamp, pointerPosition) {
       var uv = 0;
       var numPoints = this.numPoints;
