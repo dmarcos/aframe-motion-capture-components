@@ -11,6 +11,7 @@ AFRAME.registerComponent('avatar-recorder', {
     spectatorPlay: {default: false},
     spectatorPosition: {default: '0 1.6 0', type: 'vec3'},
     localStorage: {default: true},
+    saveFile: {default: true},
     loop: {default: true},
   },
 
@@ -24,13 +25,13 @@ AFRAME.registerComponent('avatar-recorder', {
     // Grab camera.
     if (el.camera && el.camera.el) {
       prepareCamera(el.camera.el);
-    } else {
-      el.addEventListener('camera-set-active', function (evt) {
-        prepareCamera(evt.detail.cameraEl);
-      });
     }
+    el.addEventListener('camera-set-active', function (evt) {
+      prepareCamera(evt.detail.cameraEl);
+    });
 
     function prepareCamera (cameraEl) {
+      if (self.cameraEl) { self.cameraEl.removeAttribute('motion-capture-recorder'); }
       self.cameraEl = cameraEl;
       self.cameraEl.setAttribute('motion-capture-recorder', {
         autoRecord: false,
@@ -45,7 +46,6 @@ AFRAME.registerComponent('avatar-recorder', {
 
     var recordingData = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
     if (!recordingData) { return; }
-    debugger;
     log('Replaying recording.');
     el.setAttribute('avatar-replayer', {
       loop: data.loop,
@@ -196,7 +196,8 @@ AFRAME.registerComponent('avatar-recorder', {
     if (this.data.localStorage) {
       log('Recording saved to localStorage.');
       this.saveToLocalStorage(data);
-    } else {
+    }
+    if (this.data.saveFile) {
       log('Recording saved to file.');
       this.saveRecordingFile(data);
     }

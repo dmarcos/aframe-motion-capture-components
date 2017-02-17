@@ -25,8 +25,11 @@ AFRAME.registerComponent('avatar-replayer', {
     this.onKeyDown = this.onKeyDown.bind(this);
   },
 
+  remove: function () {
+    this.stopReplaying();
+  },
+
   restoreCamera: function() {
-    this.currentCameraEl.play();
     this.currentCameraEl.setAttribute('camera', 'active', true);
   },
 
@@ -95,7 +98,7 @@ AFRAME.registerComponent('avatar-replayer', {
     var self = this;
     var puppetEl = this.puppetEl;
     var sceneEl = this.el;
-    this.recordingreplayData = replayData;
+    this.recordingReplayData = replayData;
     this.isReplaying = true;
     if (!this.el.camera) {
       this.el.addEventListener('camera-set-active', function () {
@@ -110,8 +113,7 @@ AFRAME.registerComponent('avatar-replayer', {
       if (key === 'camera') {
         // Grab camera.
         log('Setting motion-capture-replayer on camera.');
-        debugger;
-        puppetEl = self.data.spectatorMode ? self.currentCameraEl : sceneEl.camera.el;
+        puppetEl = self.puppetEl = self.data.spectatorMode ? self.currentCameraEl : sceneEl.camera.el;
       } else {
         // Grab other entities.
         puppetEl = sceneEl.querySelector('#' + key);
@@ -124,7 +126,6 @@ AFRAME.registerComponent('avatar-replayer', {
       log('Setting motion-capture-replayer on ' + key + '.');
       puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
       puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
-      this.puppetEl = puppetEl;
     });
     this.configureCamera();
   },
@@ -148,9 +149,7 @@ AFRAME.registerComponent('avatar-replayer', {
 
   configureHeadGeometry: function() {
     var currentCameraEl = this.currentCameraEl;
-    // Remove previous visual appearance.
-    currentCameraEl.removeAttribute('geometry');
-    currentCameraEl.removeAttribute('material');
+    if (currentCameraEl.getObject3D('mesh')) { return; }
     if (!this.data.spectatorMode) { return; }
     currentCameraEl.setAttribute('geometry', {primitive: 'box', height: 0.3, width: 0.3, depth: 0.2});
     currentCameraEl.setAttribute('material', {color: 'pink'});
@@ -159,16 +158,16 @@ AFRAME.registerComponent('avatar-replayer', {
   stopReplaying: function () {
     var keys;
     var self = this;
-    if (!this.isReplaying || !this.recordingData) { return; }
+    if (!this.isReplaying || !this.recordingReplayData) { return; }
     this.isReplaying = false;
-    keys = Object.keys(this.recordingData);
+    keys = Object.keys(this.recordingReplayData);
     keys.forEach(function (key) {
       if (key === 'camera') {
-        self.el.camera.el.components['motion-capture-replayer'].stopReplaying();
+        self.puppetEl.removeComponent('motion-capture-replayer');
       } else {
         el = document.querySelector('#' + key);
         if (!el) { warn('No element with id ' + key); }
-        el.components['motion-capture-replayer'].stopReplaying();
+        el.removeComponent('motion-capture-replayer');
       }
     });
   },

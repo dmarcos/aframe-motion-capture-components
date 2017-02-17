@@ -263,10 +263,18 @@
 	    this.currentEventIndex = 0;
 	    this.onStrokeStarted = this.onStrokeStarted.bind(this);
 	    this.onStrokeEnded = this.onStrokeEnded.bind(this);
-	    this.el.addEventListener('pause', this.playComponent.bind(this));
+	    this.playComponent = this.playComponent.bind(this);
+	    this.el.addEventListener('pause', this.playComponent);
 	    this.discardedFrames = 0;
 	    this.playingEvents = [];
 	    this.playingPoses = [];
+	  },
+
+	  remove: function () {
+	    this.el.removeEventListener('pause', this.playComponent);
+	    this.stopReplaying();
+	    this.el.pause();
+	    this.el.play();
 	  },
 
 	  update: function (oldData) {
@@ -441,6 +449,7 @@
 	    spectatorPlay: {default: false},
 	    spectatorPosition: {default: '0 1.6 0', type: 'vec3'},
 	    localStorage: {default: true},
+	    saveFile: {default: true},
 	    loop: {default: true},
 	  },
 
@@ -454,13 +463,13 @@
 	    // Grab camera.
 	    if (el.camera && el.camera.el) {
 	      prepareCamera(el.camera.el);
-	    } else {
-	      el.addEventListener('camera-set-active', function (evt) {
-	        prepareCamera(evt.detail.cameraEl);
-	      });
 	    }
+	    el.addEventListener('camera-set-active', function (evt) {
+	      prepareCamera(evt.detail.cameraEl);
+	    });
 
 	    function prepareCamera (cameraEl) {
+	      if (self.cameraEl) { self.cameraEl.removeAttribute('motion-capture-recorder'); }
 	      self.cameraEl = cameraEl;
 	      self.cameraEl.setAttribute('motion-capture-recorder', {
 	        autoRecord: false,
@@ -475,7 +484,6 @@
 
 	    var recordingData = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
 	    if (!recordingData) { return; }
-	    debugger;
 	    log('Replaying recording.');
 	    el.setAttribute('avatar-replayer', {
 	      loop: data.loop,
@@ -626,7 +634,8 @@
 	    if (this.data.localStorage) {
 	      log('Recording saved to localStorage.');
 	      this.saveToLocalStorage(data);
-	    } else {
+	    }
+	    if (this.data.saveFile) {
 	      log('Recording saved to file.');
 	      this.saveRecordingFile(data);
 	    }
@@ -687,8 +696,11 @@
 	    this.onKeyDown = this.onKeyDown.bind(this);
 	  },
 
+	  remove: function () {
+	    this.stopReplaying();
+	  },
+
 	  restoreCamera: function() {
-	    this.currentCameraEl.play();
 	    this.currentCameraEl.setAttribute('camera', 'active', true);
 	  },
 
@@ -757,7 +769,7 @@
 	    var self = this;
 	    var puppetEl = this.puppetEl;
 	    var sceneEl = this.el;
-	    this.recordingreplayData = replayData;
+	    this.recordingReplayData = replayData;
 	    this.isReplaying = true;
 	    if (!this.el.camera) {
 	      this.el.addEventListener('camera-set-active', function () {
@@ -772,8 +784,7 @@
 	      if (key === 'camera') {
 	        // Grab camera.
 	        log('Setting motion-capture-replayer on camera.');
-	        debugger;
-	        puppetEl = self.data.spectatorMode ? self.currentCameraEl : sceneEl.camera.el;
+	        puppetEl = self.puppetEl = self.data.spectatorMode ? self.currentCameraEl : sceneEl.camera.el;
 	      } else {
 	        // Grab other entities.
 	        puppetEl = sceneEl.querySelector('#' + key);
@@ -786,7 +797,6 @@
 	      log('Setting motion-capture-replayer on ' + key + '.');
 	      puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
 	      puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
-	      this.puppetEl = puppetEl;
 	    });
 	    this.configureCamera();
 	  },
@@ -810,9 +820,7 @@
 
 	  configureHeadGeometry: function() {
 	    var currentCameraEl = this.currentCameraEl;
-	    // Remove previous visual appearance.
-	    currentCameraEl.removeAttribute('geometry');
-	    currentCameraEl.removeAttribute('material');
+	    if (currentCameraEl.getObject3D('mesh')) { return; }
 	    if (!this.data.spectatorMode) { return; }
 	    currentCameraEl.setAttribute('geometry', {primitive: 'box', height: 0.3, width: 0.3, depth: 0.2});
 	    currentCameraEl.setAttribute('material', {color: 'pink'});
@@ -821,16 +829,16 @@
 	  stopReplaying: function () {
 	    var keys;
 	    var self = this;
-	    if (!this.isReplaying || !this.recordingData) { return; }
+	    if (!this.isReplaying || !this.recordingReplayData) { return; }
 	    this.isReplaying = false;
-	    keys = Object.keys(this.recordingData);
+	    keys = Object.keys(this.recordingReplayData);
 	    keys.forEach(function (key) {
 	      if (key === 'camera') {
-	        self.el.camera.el.components['motion-capture-replayer'].stopReplaying();
+	        self.puppetEl.removeComponent('motion-capture-replayer');
 	      } else {
 	        el = document.querySelector('#' + key);
 	        if (!el) { warn('No element with id ' + key); }
-	        el.components['motion-capture-replayer'].stopReplaying();
+	        el.removeComponent('motion-capture-replayer');
 	      }
 	    });
 	  },
