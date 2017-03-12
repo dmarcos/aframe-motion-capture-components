@@ -23,6 +23,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
     autoRecord: {default: false},
     enabled: {default: true},
     hand: {default: 'right'},
+    recordingControls: {default: false},
     persistStroke: {default: false},
     visibleStroke: {default: true}
   },
@@ -112,9 +113,11 @@ AFRAME.registerComponent('motion-capture-recorder', {
       // Don't try to record camera with controllers.
       if (el.components.camera) { return; }
 
-      el.setAttribute('vive-controls', {hand: data.hand});
-      el.setAttribute('oculus-touch-controls', {hand: data.hand});
-      el.setAttribute('stroke', {hand: data.hand});
+      if (data.recordingControls) {
+        el.setAttribute('vive-controls', {hand: data.hand});
+        el.setAttribute('oculus-touch-controls', {hand: data.hand});
+      }
+      el.setAttribute('stroke', '');
     }
   },
 

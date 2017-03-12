@@ -13,13 +13,12 @@ AFRAME.registerComponent('avatar-replayer', {
 
   init: function () {
     var sceneEl = this.el;
-    this.storeInitialCamera = this.storeInitialCamera.bind(this);
-    this.initSpectatorCamera();
+    this.setupCameras = this.setupCameras.bind(this);
     // Prepare camera.
     if (sceneEl.camera) {
-      this.storeInitialCamera();
+      this.setupCameras();
     } else {
-      this.el.addEventListener('camera-set-active', this.storeInitialCamera);
+      this.el.addEventListener('camera-set-active', this.setupCameras);
     }
     this.el.addEventListener('replayingstopped', this.restoreCamera.bind(this));
     this.onKeyDown = this.onKeyDown.bind(this);
@@ -33,11 +32,11 @@ AFRAME.registerComponent('avatar-replayer', {
     this.currentCameraEl.setAttribute('camera', 'active', true);
   },
 
-  storeInitialCamera: function () {
+  setupCameras: function () {
     this.currentCameraEl = this.el.camera.el;
     this.currentCameraEl.removeAttribute('data-aframe-default-camera');
-    this.el.appendChild(this.spectatorCameraEl);
-    this.el.removeEventListener('camera-set-active', this.storeInitialCamera);
+    this.el.removeEventListener('camera-set-active', this.setupCameras);
+    this.initSpectatorCamera();
   },
 
   play: function () {
@@ -74,10 +73,15 @@ AFRAME.registerComponent('avatar-replayer', {
 
   initSpectatorCamera: function () {
     var spectatorCameraEl = this.spectatorCameraEl = document.createElement('a-entity');
-    spectatorCameraEl.id = 'spectatorCamera';
+    var spectatorCameraRigEl = this.spectatorCameraRigEl = document.createElement('a-entity');
+    if (this.el.querySelector('#spectatorCameraRig')) { return; }
+    spectatorCameraRigEl.id = 'spectatorCamera';
+    spectatorCameraRigEl.id = 'spectatorCameraRig';
     spectatorCameraEl.setAttribute('camera', '');
     spectatorCameraEl.setAttribute('look-controls', '');
     spectatorCameraEl.setAttribute('wasd-controls', '');
+    spectatorCameraRigEl.appendChild(spectatorCameraEl);
+    this.el.appendChild(this.spectatorCameraRigEl);
   },
 
   updateSrc: function (src) {
@@ -139,7 +143,7 @@ AFRAME.registerComponent('avatar-replayer', {
       return;
     }
     if (data.spectatorMode) {
-      spectatorCameraEl.setAttribute('position', data.spectatorPosition);
+      this.spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
       spectatorCameraEl.setAttribute('camera', 'active', true);
     } else {
       currentCameraEl.setAttribute('camera', 'active', true);

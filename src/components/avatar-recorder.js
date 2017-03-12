@@ -16,28 +16,9 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   init: function () {
-    var self = this;
-    var el = this.el;
     this.trackedControllerEls = {};
     this.onKeyDown = this.onKeyDown.bind(this);
     this.tick = AFRAME.utils.throttle(this.throttledTick, 100, this);
-
-    // Grab camera.
-    if (el.camera && el.camera.el) {
-      prepareCamera(el.camera.el);
-    }
-    el.addEventListener('camera-set-active', function (evt) {
-      prepareCamera(evt.detail.cameraEl);
-    });
-
-    function prepareCamera (cameraEl) {
-      if (self.cameraEl) { self.cameraEl.removeAttribute('motion-capture-recorder'); }
-      self.cameraEl = cameraEl;
-      self.cameraEl.setAttribute('motion-capture-recorder', {
-        autoRecord: false,
-        visibleStroke: false
-      });
-    }
   },
 
   replayRecording: function () {
@@ -69,18 +50,18 @@ AFRAME.registerComponent('avatar-recorder', {
   throttledTick: function () {
     var self = this;
     var trackedControllerEls = this.el.querySelectorAll('[tracked-controls]');
+    this.trackedControllerEls = {};
     trackedControllerEls.forEach(function (trackedControllerEl) {
       if (!trackedControllerEl.id) {
         warn('Found tracked controllers with no id. It will not be recorded');
         return;
       }
-      if (self.trackedControllerEls[trackedControllerEl.id]) { return; }
       trackedControllerEl.setAttribute('motion-capture-recorder', {
         autoRecord: false,
         visibleStroke: false
       });
       self.trackedControllerEls[trackedControllerEl.id] = trackedControllerEl;
-      if (this.isRecording) {
+      if (self.isRecording) {
         trackedControllerEl.components['motion-capture-recorder'].startRecording();
       }
     });
@@ -150,12 +131,37 @@ AFRAME.registerComponent('avatar-recorder', {
     }
   },
 
+  setupCamera: function () {
+    var el = this.el;
+    var self = this;
+    var setup;
+    // Grab camera.
+    if (el.camera && el.camera.el) {
+      prepareCamera(el.camera.el);
+      return;
+    }
+    el.addEventListener('camera-set-active', setup)
+    setup = function (evt) { prepareCamera(evt.detail.cameraEl); };
+
+    function prepareCamera (cameraEl) {
+      if (self.cameraEl) { self.cameraEl.removeAttribute('motion-capture-recorder'); }
+      self.cameraEl = cameraEl;
+      self.cameraEl.setAttribute('motion-capture-recorder', {
+        autoRecord: false,
+        visibleStroke: false
+      });
+      el.removeEventListener('camera-set-active', setup);
+    }
+  },
+
   startRecording: function () {
     var trackedControllerEls = this.trackedControllerEls;
-    var keys = Object.keys(trackedControllerEls);
+    var keys;
     if (this.isRecording) { return; }
+    keys = Object.keys(trackedControllerEls);
     log('Starting recording!');
     this.stopReplaying();
+    this.setupCamera();
     this.isRecording = true;
     this.cameraEl.components['motion-capture-recorder'].startRecording();
     keys.forEach(function (id) {
