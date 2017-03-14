@@ -2,8 +2,8 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>A-Frame Motion Capture Record</title>
-    <meta name="description" content="Motion Capture Record – A-Frame">
+    <title>A-Frame Motion Capture Replay</title>
+    <meta name="description" content="Motion Capture Replay – A-Frame">
     <script src="js/aframe.js"></script>
     <script src="js/build.js"></script>
     <script src="js/components/aabb-collider.js"></script>
@@ -15,11 +15,11 @@
   <body>
     <div class="container">
       <div class="sidebar">
-        <h1>Record</h1>
-        <p>Press space to start recording the position and orientation of the camera (you can move with Mouse + WASD keys). If you press space again the recorded data will replay.</p>
+        <h1>Replay</h1>
+        <p>This is an example of replaying a recording session. You can see how the position and rotation of the head and hands are recorded. The events emitted by the controllers are also persisted and the interactions of the user with the cubes are preserved.
       </div>
-      <a-scene fog="color: #bc483e; near: 0; far: 65;"
-               avatar-recorder="spectatorPlay: true; spectatorPosition: 0 1.6 2" embedded>
+      <a-scene fog="color: #bc483e; near: 0; far: 65;" avatar-replayer="src: assets/tracked-recording.json; spectatorMode: true" embedded>
+
         <a-assets>
           <a-mixin id="cube"
                    geometry="primitive: box; height: 0.30; width: 0.30; depth: 0.30"
