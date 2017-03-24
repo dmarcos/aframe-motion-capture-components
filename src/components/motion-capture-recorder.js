@@ -78,11 +78,22 @@ AFRAME.registerComponent('motion-capture-recorder', {
   },
 
   getJSONData: function () {
+    var data;
+    var trackedControlsComponent = this.el.components['tracked-controls'];
+    var controller = trackedControlsComponent && trackedControlsComponent.controller;
     if (!this.recordedPoses) { return; }
-    return {
+    data = {
       poses: this.system.getStrokeJSON(this.recordedPoses),
       events: this.recordedEvents
     };
+    if (controller) {
+      data.gamepad = {
+        id: controller.id,
+        hand: controller.hand,
+        index: controller.index
+      };
+    }
+    return data;
   },
 
   saveCapture: function (binary) {

@@ -74,7 +74,8 @@ AFRAME.registerComponent('avatar-replayer', {
   initSpectatorCamera: function () {
     var spectatorCameraEl = this.spectatorCameraEl = document.createElement('a-entity');
     var spectatorCameraRigEl = this.spectatorCameraRigEl = document.createElement('a-entity');
-    if (this.el.querySelector('#spectatorCameraRig')) { return; }
+    if (this.el.querySelector('#spectatorCameraRig')
+        || !this.data.spectatorMode) { return; }
     spectatorCameraRigEl.id = 'spectatorCamera';
     spectatorCameraRigEl.id = 'spectatorCameraRig';
     spectatorCameraEl.setAttribute('camera', '');

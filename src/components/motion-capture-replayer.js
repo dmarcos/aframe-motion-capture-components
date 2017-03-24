@@ -74,6 +74,10 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.isReplaying = true;
     this.startReplayingPoses(data.poses);
     this.startReplayingEvents(data.events);
+    if (data.gamepad) {
+      this.el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
+      this.el.emit('gamepadconnected');
+    }
     this.el.emit('replayingstarted');
   },
 
