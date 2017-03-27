@@ -1,14 +1,14 @@
 {
-  "name": "aframe-motion-capture",
+  "name": "aframe-motion-capture-components",
   "version": "0.1.0",
-  "description": "A-Frame motion capture component",
+  "description": "A-Frame motion capture components",
   "author": "Diego Marcos <diego.marcos@gmail.com>",
   "license": "MIT",
   "main": "src/index.js",
   "scripts": {
     "build": "cross-env NODE_ENV=production webpack --config webpack.dev.js",
     "start": "webpack-dev-server --host 0.0.0.0 --config webpack.dev.js --progress --colors --hot -d --open --inline",
-    "dist": "webpack src/index.js dist/aframe-motion-capture.js && webpack -p src/index.js dist/aframe-motion-capture.min.js",
+    "dist": "webpack src/index.js dist/aframe-motion-capture-components.js && webpack -p src/index.js dist/aframe-motion-capture-components.min.js",
     "lint": "semistandard -v | snazzy",
     "prepublish": "npm run dist",
     "preghpages": "npm run build && shx rm -rf gh-pages && shx mkdir gh-pages && shx cp -r examples/* gh-pages",
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dmarcos/aframe-motion-capture.git"
+    "url": "git+https://github.com/dmarcos/aframe-motion-capture-components.git"
   },
   "keywords": [
     "aframe",
@@ -32,9 +32,9 @@
     "mozvr"
   ],
   "bugs": {
-    "url": "https://github.com/dmarcos/aframe-motion-capture/issues"
+    "url": "https://github.com/dmarcos/aframe-motion-capture-components/issues"
   },
-  "homepage": "https://github.com/dmarcos/aframe-motion-capture#readme",
+  "homepage": "https://github.com/dmarcos/aframe-motion-capture-components#readme",
   "devDependencies": {
     "aframe": "github:aframevr/aframe#08a8952",
     "chai": "^3.4.1",

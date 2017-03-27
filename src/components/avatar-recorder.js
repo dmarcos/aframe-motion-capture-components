@@ -12,7 +12,7 @@ AFRAME.registerComponent('avatar-recorder', {
     spectatorPosition: {default: '0 1.6 0', type: 'vec3'},
     localStorage: {default: true},
     saveFile: {default: true},
-    loop: {default: true},
+    loop: {default: true}
   },
 
   init: function () {

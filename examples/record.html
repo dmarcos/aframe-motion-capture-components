@@ -2,8 +2,8 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>A-Frame Motion Capture Record</title>
-    <meta name="description" content="Motion Capture Record – A-Frame">
+    <title>A-Frame Motion Capture Components Record</title>
+    <meta name="description" content="Motion Capture Components Record – A-Frame">
     <script src="js/aframe.js"></script>
     <script src="js/build.js"></script>
     <script src="js/components/aabb-collider.js"></script>
@@ -16,7 +16,7 @@
     <div class="container">
       <div class="sidebar">
         <h1>Record</h1>
-        <p>Press space to start recording the position and orientation of the camera (you can move with Mouse + WASD keys). If you press space again the recorded data will replay.</p>
+        <p>Press space to start recording the position and orientation of the camera (you can move with Mouse + WASD keys if you don't have a headset). If you press space again the recorded data will be stored in local storage and replayed even if the page reloads. The recording is replayed in spectator mode and the head is rendered as a pink cube. You can clear the recording by pressing c and reloading the page.</p>
       </div>
       <a-scene fog="color: #bc483e; near: 0; far: 65;"
                avatar-recorder="spectatorPlay: true; spectatorPosition: 0 1.6 2" embedded>
