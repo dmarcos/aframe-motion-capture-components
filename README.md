@@ -1,7 +1,7 @@
 ## aframe-motion-capture-components
 
-[A-Frame](https://aframe.io) motion capture components set record pose and
-events from entities (i.e., camera and tracked controllers) that can be replayed or persisted to JSON or stored in localstorage. The motion capture components allow to emulate the presence of a VR headset and controllers. We can build test automation for VR experiences. One can replay the recorded user behavior and assert the state of the entities at the end. This can happen with no user intervention at all. We can also record user interactions and develop on the go where there's no VR hardware available. One can iterate over the visual aspect or behavior of the experience using the recorded user input
+[A-Frame](https://aframe.io) motion capture components record pose and
+events from entities (i.e., camera and tracked controllers) that can be replayed, persisted to JSON or stored in localstorage. The motion capture components allow to emulate the presence of a VR headset and controllers. Once can build test automation tooks for VR experiences. You can replay the recorded user behavior and assert the state of the entities at the end. This can happen with no user intervention at all. One can also record user interactions and develop on the go where there's no VR hardware available. You can iterate over the visual aspect or behavior of the experience using the recorded user input
 
 ### Usage
 
