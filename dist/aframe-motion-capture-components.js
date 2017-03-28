@@ -469,7 +469,7 @@
 	    spectatorPosition: {default: '0 1.6 0', type: 'vec3'},
 	    localStorage: {default: true},
 	    saveFile: {default: true},
-	    loop: {default: true},
+	    loop: {default: true}
 	  },
 
 	  init: function () {
@@ -768,11 +768,13 @@
 	  },
 
 	  initSpectatorCamera: function () {
-	    var spectatorCameraEl = this.spectatorCameraEl = document.createElement('a-entity');
-	    var spectatorCameraRigEl = this.spectatorCameraRigEl = document.createElement('a-entity');
+	    var spectatorCameraEl = this.spectatorCameraEl =
+	      this.el.querySelector('#spectatorCamera') || document.createElement('a-entity');
+	    var spectatorCameraRigEl = this.spectatorCameraRigEl =
+	      this.el.querySelector('#spectatorCameraRig') || document.createElement('a-entity');
 	    if (this.el.querySelector('#spectatorCameraRig')
 	        || !this.data.spectatorMode) { return; }
-	    spectatorCameraRigEl.id = 'spectatorCamera';
+	    spectatorCameraEl.id = 'spectatorCamera';
 	    spectatorCameraRigEl.id = 'spectatorCameraRig';
 	    spectatorCameraEl.setAttribute('camera', '');
 	    spectatorCameraEl.setAttribute('look-controls', '');
@@ -843,6 +845,7 @@
 	      this.spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
 	      spectatorCameraEl.setAttribute('camera', 'active', true);
 	    } else {
+	      debugger
 	      currentCameraEl.setAttribute('camera', 'active', true);
 	    }
 	    this.configureHeadGeometry();
@@ -1319,6 +1322,7 @@
 	    var trackedControlsSystem = sceneEl.systems['tracked-controls'];
 	    this.updateControllerListOriginal();
 	    this.gamepads.forEach(function (gamepad) {
+	      if (trackedControlsSystem.controllers[gamepad.index]) { return; }
 	      trackedControlsSystem.controllers[gamepad.index] = gamepad;
 	    });
 	    for (i = 0; i < trackedControlsSystem.controllers.length; ++i) {

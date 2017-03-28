@@ -72,11 +72,13 @@ AFRAME.registerComponent('avatar-replayer', {
   },
 
   initSpectatorCamera: function () {
-    var spectatorCameraEl = this.spectatorCameraEl = document.createElement('a-entity');
-    var spectatorCameraRigEl = this.spectatorCameraRigEl = document.createElement('a-entity');
+    var spectatorCameraEl = this.spectatorCameraEl =
+      this.el.querySelector('#spectatorCamera') || document.createElement('a-entity');
+    var spectatorCameraRigEl = this.spectatorCameraRigEl =
+      this.el.querySelector('#spectatorCameraRig') || document.createElement('a-entity');
     if (this.el.querySelector('#spectatorCameraRig')
         || !this.data.spectatorMode) { return; }
-    spectatorCameraRigEl.id = 'spectatorCamera';
+    spectatorCameraEl.id = 'spectatorCamera';
     spectatorCameraRigEl.id = 'spectatorCameraRig';
     spectatorCameraEl.setAttribute('camera', '');
     spectatorCameraEl.setAttribute('look-controls', '');

@@ -68,7 +68,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
     var value;
     if (!data.enabled || data.autoRecord) { return; }
     // Not Trigger
-    if (evt.detail.id !== 1) { return; }
+    if (evt.detail.id !== 1 || !this.data.recordingControls) { return; }
     value = evt.detail.state.value;
     if (value <= 0.1) {
       if (this.isRecording) { this.stopRecording(); }
@@ -83,7 +83,7 @@ AFRAME.registerComponent('motion-capture-recorder', {
     var controller = trackedControlsComponent && trackedControlsComponent.controller;
     if (!this.recordedPoses) { return; }
     data = {
-      poses: this.system.getStrokeJSON(this.recordedPoses),
+      poses: this.getStrokeJSON(this.recordedPoses),
       events: this.recordedEvents
     };
     if (controller) {
@@ -94,6 +94,20 @@ AFRAME.registerComponent('motion-capture-recorder', {
       };
     }
     return data;
+  },
+
+  getStrokeJSON: function (stroke) {
+    var point;
+    var points = [];
+    for (var i = 0; i < stroke.length; i++) {
+      point = stroke[i];
+      points.push({
+        position: point.position,
+        rotation: point.rotation,
+        timestamp: point.timestamp
+      });
+    }
+    return points;
   },
 
   saveCapture: function (binary) {
