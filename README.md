@@ -102,7 +102,7 @@ version of the component straight into your HTML file, respective to your
 version of A-Frame:
 
 ```sh
-angle install aframe-motion-capture
+angle install aframe-motion-capture-components
 ```
 
 ### npm
@@ -110,12 +110,12 @@ angle install aframe-motion-capture
 Install via npm:
 
 ```bash
-npm install aframe-motion-capture
+npm install aframe-motion-capture-components
 ```
 
 Then require and use.
 
 ```js
 require('aframe');
-require('aframe-motion-capture');
+require('aframe-motion-capture-components');
 ```
