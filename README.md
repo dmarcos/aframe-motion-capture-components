@@ -3,9 +3,9 @@
 [A-Frame](https://aframe.io) motion capture components record pose and
 events from entities (i.e., camera and tracked controllers) that can be replayed, persisted to JSON or stored in localstorage. The motion capture components allow to emulate the presence of a VR headset and controllers. Once can build test automation tooks for VR experiences. You can replay the recorded user behavior and assert the state of the entities at the end. This can happen with no user intervention at all. One can also record user interactions and develop on the go where there's no VR hardware available. You can iterate over the visual aspect or behavior of the experience using the recorded user input
 
-### Usage
+## Usage
 
-#### WebVR Recording
+### WebVR Recording
 
 Set the `avatar-recorder` on the scene. Make sure your controllers have `id`s.
 Then hit `<space>` to toggle recording. A JSON will automatically be downloaded
@@ -18,7 +18,7 @@ once the recording finishes.
 </a-scene>
 ```
 
-#### WebVR Replaying
+### WebVR Replaying
 
 Specify the path to a captured WebVR recording JSON file.
 
@@ -29,9 +29,9 @@ Specify the path to a captured WebVR recording JSON file.
 </a-scene>
 ```
 
-### Components API
+## Components API
 
-#### avatar-recorder
+### avatar-recorder
 
 | Property          | Description                                             | Default Value |
 | ----------------- | ------------------------------------------------------- | ------------- |
@@ -43,14 +43,14 @@ Specify the path to a captured WebVR recording JSON file.
 | spectatorMode     | Replay in 3rd person mode.                              | false         |
 | spectatorPosition | Initial position of the 3rd person camera.              | 0 0 0         |
 
-### Keyboard Shortcuts
+#### Keyboard Shortcuts
 
 | Key   | Description                                   |
 |-------|---------------------------------------------- |
 | space | Toggle recording.                             |
 | c     | Clear recording from localStorage and memory. |
 
-#### avatar-replayer
+### avatar-replayer
 
 | Property          | Description                                | Default Value |
 | ----------------- | ------------------------------------------ | ------------- |
@@ -59,7 +59,7 @@ Specify the path to a captured WebVR recording JSON file.
 | spectatorMode     | Replay in 3rd person mode.                 | false         |
 | spectatorPosition | Initial position of the 3rd person camera  | 0 0 0         |
 
-#### motion-capture-replayer
+### motion-capture-replayer
 
 | Property   | Description                                          | Default Value |
 | --------   | ---------------------------------------------------- | ------------- |
@@ -68,7 +68,7 @@ Specify the path to a captured WebVR recording JSON file.
 | recorderEl | An entity that it's the source of the recording.     | null          |
 | src        | The recording data can be hosted in a URL.           | ''            |
 
-#### motion-capture-recorder
+### motion-capture-recorder
 
 | Property          | Description                                           | Default Value |
 | --------          | ----------------------------------------------------- | ------------- |
@@ -79,9 +79,9 @@ Specify the path to a captured WebVR recording JSON file.
 | persistStroke     | The recorded stroke is persisted as reference.        | false         |
 | visibleStroke     | The recorded stroke is renderered for visual feedback.| true          |
 
-### Installation
+## Installation
 
-#### Browser
+### Browser
 
 Install and use by directly including the [browser files](dist):
 
@@ -105,7 +105,7 @@ version of A-Frame:
 angle install aframe-motion-capture
 ```
 
-#### npm
+### npm
 
 Install via npm:
 
