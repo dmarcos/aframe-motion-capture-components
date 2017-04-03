@@ -10,5 +10,4 @@ require('./components/avatar-replayer.js');
 require('./components/stroke.js');
 
 // Systems
-require('./systems/motion-capture-recorder.js');
 require('./systems/motion-capture-replayer.js');
