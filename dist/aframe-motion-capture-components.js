@@ -56,7 +56,6 @@
 	__webpack_require__(5);
 
 	// Systems
-	__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"./systems/motion-capture-recorder.js\""); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
 	__webpack_require__(6);
 
 
