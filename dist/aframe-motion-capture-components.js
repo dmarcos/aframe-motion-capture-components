@@ -56,7 +56,6 @@
 	__webpack_require__(5);
 
 	// Systems
-	__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"./systems/motion-capture-recorder.js\""); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
 	__webpack_require__(6);
 
 
@@ -475,6 +474,9 @@
 
 	var LOCALSTORAGE_KEY = 'avatar-recording';
 
+	/**
+	 * @member {object} recordingData - Where all the recording data is stored in memory.
+	 */
 	AFRAME.registerComponent('avatar-recorder', {
 	  schema: {
 	    autoRecord: {default: false},
@@ -555,26 +557,36 @@
 	  },
 
 	  /**
-	   * space = toggle recording, p = stop playing, c = clear local storage
+	   * Keyboard shortcuts.
 	   */
 	  onKeyDown: function (evt) {
 	    var key = evt.keyCode;
-	    if (key !== 32 && key !== 80 && key !== 67) { return; }
+	    var KEYS = {space: 32, c: 67, p: 80, u: 85};
+
 	    switch (key) {
-	      case 32: {
+	      // <space>: Toggle recording.
+	      case KEYS.space: {
 	        this.toggleRecording();
 	        break;
 	      }
 
-	      case 80: {
+	      // p: Toggle recording.
+	      case KEYS.p: {
 	        this.toggleReplaying();
 	        break;
 	      }
 
-	      case 67: {
+	      // c: Clear localStorage.
+	      case KEYS.c: {
 	        log('Recording cleared from localStorage.');
 	        this.recordingData = null;
 	        localStorage.removeItem(LOCALSTORAGE_KEY);
+	        break;
+	      }
+
+	      // u: Upload recording.
+	      case KEYS.u: {
+	        this.uploadRecording();
 	        break;
 	      }
 	    }
@@ -689,7 +701,7 @@
 	    var type = this.data.binaryFormat ? 'application/octet-binary' : 'application/json';
 	    var blob = new Blob([jsonData], {type: type});
 	    var url = URL.createObjectURL(blob);
-	    var fileName = 'player-recording-' + document.title + '-' + Date.now() + '.json';
+	    var fileName = 'recording-' + document.title.toLowerCase().replace(/ /g, '-') + '.json';
 	    var aEl = document.createElement('a');
 	    aEl.href = url;
 	    aEl.setAttribute('download', fileName);
@@ -700,6 +712,41 @@
 	      aEl.click();
 	      document.body.removeChild(aEl);
 	    }, 1);
+	  },
+
+	  /**
+	   * Upload recording to file.io.
+	   */
+	  uploadRecording: function () {
+	    var request;
+
+	    if (!this.recordingData) {
+	      log('Cannot upload without a recording in memory.');
+	      return;
+	    }
+
+	    log('Uploading recording to myjson.com.');
+	    request = new XMLHttpRequest();
+	    request.open('POST', 'https://api.myjson.com/bins', true);
+	    request.setRequestHeader('Content-type', 'application/json');
+	    request.onload = function () {
+	      var aEl;
+	      var url = JSON.parse(this.responseText).uri;
+	      log('Recording uploaded to', url);
+	      aEl = document.createElement('a');
+	      aEl.innerHTML = url;
+	      aEl.setAttribute('href', url);
+	      aEl.style.position = 'fixed';
+	      aEl.style.display = 'block';
+	      aEl.style.zIndex = 99999;
+	      aEl.style.background = '#111';
+	      aEl.style.color = '#FAFAFA';
+	      aEl.style.padding = '15px';
+	      aEl.style.left = 0;
+	      aEl.style.top = 0;
+	      document.body.appendChild(aEl);
+	    }
+	    request.send(JSON.stringify(this.recordingData));
 	  }
 	});
 
@@ -777,8 +824,8 @@
 
 	  update: function (oldData) {
 	    var data = this.data;
-	    if (!data.src || oldData.src === data.src) { return; }
-	    this.updateSrc(data.src);
+	    if (oldData.src === data.src) { return; }
+	    this.replayRecordingFromSource(oldData);
 	  },
 
 	  initSpectatorCamera: function () {
@@ -797,8 +844,42 @@
 	    this.el.appendChild(this.spectatorCameraRigEl);
 	  },
 
-	  updateSrc: function (src) {
+	  /**
+	   * Check for recording sources and play.
+	   */
+	  replayRecordingFromSource: function (oldSrc) {
+	    var data = this.data;
+	    var localStorageData;
+	    var queryParamSrc;
+	    var src;
+
+	    // From localStorage.
+	    localStorageData = JSON.parse(localStorage.getItem('avatar-recording'));
+	    if (localStorageData) {
+	      log('Replaying from localStorage.');
+	      this.startReplaying(localStorageData);
+	      return;
+	    }
+
+	    // From file.
+	    queryParamSrc = this.getSrcFromSearchParam();
+	    src = data.src || queryParamSrc;
+	    if (!src || oldSrc === data.src) { return; }
+
+	    if (data.src) {
+	      log('Replaying from component `src`', src);
+	    } else if (queryParamSrc) {
+	      log('Replaying from query parameter `avatar-recording`', src);
+	    }
+
 	    this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+	  },
+
+	  /**
+	   * Defined for test stubbing.
+	   */
+	  getSrcFromSearchParam: function () {
+	    return new URLSearchParams(window.location.search).get('avatar-recording');
 	  },
 
 	  /**
@@ -815,14 +896,20 @@
 	    var self = this;
 	    var puppetEl = this.puppetEl;
 	    var sceneEl = this.el;
-	    this.recordingReplayData = replayData;
-	    this.isReplaying = true;
+
+	    if (this.isReplaying) { return; }
+
+	    // Wait for camera.
 	    if (!this.el.camera) {
 	      this.el.addEventListener('camera-set-active', function () {
 	        self.startReplaying(replayData);
 	      });
 	      return;
 	    }
+
+	    this.replayData = replayData;
+	    this.isReplaying = true;
+
 	    if (puppetEl) { puppetEl.removeAttribute('motion-capture-replayer'); }
 	    Object.keys(replayData).forEach(function setPlayer (key) {
 	      var puppetEl;
@@ -833,6 +920,7 @@
 	        puppetEl = self.puppetEl = self.data.spectatorMode ? self.currentCameraEl : sceneEl.camera.el;
 	      } else {
 	        // Grab other entities.
+	        log('Setting motion-capture-replayer on ' + key + '.');
 	        puppetEl = sceneEl.querySelector('#' + key);
 	        if (!puppetEl) {
 	          error('No element found with ID ' + key + '.');
@@ -875,9 +963,9 @@
 	  stopReplaying: function () {
 	    var keys;
 	    var self = this;
-	    if (!this.isReplaying || !this.recordingReplayData) { return; }
+	    if (!this.isReplaying || !this.replayData) { return; }
 	    this.isReplaying = false;
-	    keys = Object.keys(this.recordingReplayData);
+	    keys = Object.keys(this.replayData);
 	    keys.forEach(function (key) {
 	      if (key === 'camera') {
 	        self.puppetEl.removeComponent('motion-capture-replayer');
