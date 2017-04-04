@@ -67,8 +67,8 @@ AFRAME.registerComponent('avatar-replayer', {
 
   update: function (oldData) {
     var data = this.data;
-    if (!data.src || oldData.src === data.src) { return; }
-    this.updateSrc(data.src);
+    if (oldData.src === data.src) { return; }
+    this.replayRecordingFromSource(oldData);
   },
 
   initSpectatorCamera: function () {
@@ -87,8 +87,42 @@ AFRAME.registerComponent('avatar-replayer', {
     this.el.appendChild(this.spectatorCameraRigEl);
   },
 
-  updateSrc: function (src) {
+  /**
+   * Check for recording sources and play.
+   */
+  replayRecordingFromSource: function (oldSrc) {
+    var data = this.data;
+    var localStorageData;
+    var queryParamSrc;
+    var src;
+
+    // From localStorage.
+    localStorageData = JSON.parse(localStorage.getItem('avatar-recording'));
+    if (localStorageData) {
+      log('Replaying from localStorage.');
+      this.startReplaying(localStorageData);
+      return;
+    }
+
+    // From file.
+    queryParamSrc = this.getSrcFromSearchParam();
+    src = data.src || queryParamSrc;
+    if (!src || oldSrc === data.src) { return; }
+
+    if (data.src) {
+      log('Replaying from component `src`', src);
+    } else if (queryParamSrc) {
+      log('Replaying from query parameter `avatar-recording`', src);
+    }
+
     this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+  },
+
+  /**
+   * Defined for test stubbing.
+   */
+  getSrcFromSearchParam: function () {
+    return new URLSearchParams(window.location.search).get('avatar-recording');
   },
 
   /**
@@ -105,14 +139,20 @@ AFRAME.registerComponent('avatar-replayer', {
     var self = this;
     var puppetEl = this.puppetEl;
     var sceneEl = this.el;
-    this.recordingReplayData = replayData;
-    this.isReplaying = true;
+
+    if (this.isReplaying) { return; }
+
+    // Wait for camera.
     if (!this.el.camera) {
       this.el.addEventListener('camera-set-active', function () {
         self.startReplaying(replayData);
       });
       return;
     }
+
+    this.replayData = replayData;
+    this.isReplaying = true;
+
     if (puppetEl) { puppetEl.removeAttribute('motion-capture-replayer'); }
     Object.keys(replayData).forEach(function setPlayer (key) {
       var puppetEl;
@@ -123,6 +163,7 @@ AFRAME.registerComponent('avatar-replayer', {
         puppetEl = self.puppetEl = self.data.spectatorMode ? self.currentCameraEl : sceneEl.camera.el;
       } else {
         // Grab other entities.
+        log('Setting motion-capture-replayer on ' + key + '.');
         puppetEl = sceneEl.querySelector('#' + key);
         if (!puppetEl) {
           error('No element found with ID ' + key + '.');
@@ -165,9 +206,9 @@ AFRAME.registerComponent('avatar-replayer', {
   stopReplaying: function () {
     var keys;
     var self = this;
-    if (!this.isReplaying || !this.recordingReplayData) { return; }
+    if (!this.isReplaying || !this.replayData) { return; }
     this.isReplaying = false;
-    keys = Object.keys(this.recordingReplayData);
+    keys = Object.keys(this.replayData);
     keys.forEach(function (key) {
       if (key === 'camera') {
         self.puppetEl.removeComponent('motion-capture-replayer');
