@@ -60,10 +60,11 @@ Specify the path to a captured WebVR recording JSON file.
 
 #### Keyboard Shortcuts
 
-| Key   | Description                                   |
-|-------|---------------------------------------------- |
-| space | Toggle recording.                             |
-| c     | Clear recording from localStorage and memory. |
+| Key     | Description                                      |
+| ------- | ----------------------------------------------   |
+| space   | Toggle recording.                                |
+| c       | Clear recording from localStorage and memory.    |
+| u       | Upload recording to file host and get short URL. |
 
 ### avatar-replayer
 
