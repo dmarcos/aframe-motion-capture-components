@@ -20,11 +20,19 @@ components](https://blog.mozvr.com/a-saturday-night/).
 
 ## Usage
 
-### WebVR Recording
+### Avatar Recording
 
-Set the `avatar-recorder` on the scene. Make sure your controllers have `id`s.
-Then hit `<space>` to toggle recording. A JSON will automatically be downloaded
-once the recording finishes.
+An avatar is the representation of a user. Use the `avatar-recorder` to record
+headset and tracked controller poses as well as controller events (i.e., button
+presses and touches).
+
+1. Set the `avatar-recorder` component on the `<a-scene>` element.
+2. Make sure your controllers have `id`s.
+3. Hit `<space>` to start recording.
+4. Record movements and controller events.
+5. Hit `<space>` again to stop recording.
+6. You'll have an option to save the JSON file.
+6. The recording will play from `localStorage`.
 
 ```html
 <a-scene avatar-recorder>
@@ -33,9 +41,32 @@ once the recording finishes.
 </a-scene>
 ```
 
-### WebVR Replaying
+Hit `c` on the keyboard to clear the recording from `localStorage`.
 
-Specify the path to a captured WebVR recording JSON file.
+### Avatar Replaying
+
+The `avatar-recorder` will automatically set the `avatar-replayer` component.
+Though we can specify the `avatar-replayer` explicitly if we want to configure
+it or if we don't need recording (i.e., production).
+
+##### From localStorage
+
+By default, the `avatar-recorder` will save the recording into `localStorage`
+which the `avatar-replayer` will replay from by default.
+
+Hit `p` to toggle playback.
+
+##### From File
+
+We can specify the path to a recording file via the `avatar-recording` **query
+parameter** in the URL:
+
+```html
+https://foo.bar?avatar-recording=path/to/recording.json
+https://foo.bar?avatar-recording=path/to/anotherRecording.json
+```
+
+Or we can specify the path to a recording file in the HTML via the `src` property:
 
 ```html
 <a-scene avatar-replayer="src: recording.json">
@@ -44,7 +75,7 @@ Specify the path to a captured WebVR recording JSON file.
 </a-scene>
 ```
 
-## Components API
+## Component APIs
 
 ### avatar-recorder
 
@@ -103,12 +134,14 @@ Install and use by directly including the [browser files](dist):
 ```html
 <head>
   <title>Motion Capture</title>
-  <script src="https://aframe.io/releases/0.4.0/aframe.min.js"></script>
+  <script src="https://aframe.io/releases/0.5.0/aframe.min.js"></script>
   <script src="https://unpkg.com/aframe-motion-capture/dist/aframe-motion-capture.min.js"></script>
 </head>
-
 <body>
-  <a-scene avatar-recorder avatar-replayer></a-scene>
+  <a-scene avatar-recorder avatar-replayer>
+    <a-entity id="leftHand" hand-controls="left"></a-entity>
+    <a-entity id="rightHand" hand-controls="right"></a-entity>
+  </a-scene>
 </body>
 ```
 
@@ -117,7 +150,7 @@ version of the component straight into your HTML file, respective to your
 version of A-Frame:
 
 ```sh
-angle install aframe-motion-capture-components
+npm install -g angle && angle install aframe-motion-capture-components
 ```
 
 ### npm
