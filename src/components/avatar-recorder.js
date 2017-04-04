@@ -218,7 +218,7 @@ AFRAME.registerComponent('avatar-recorder', {
     var type = this.data.binaryFormat ? 'application/octet-binary' : 'application/json';
     var blob = new Blob([jsonData], {type: type});
     var url = URL.createObjectURL(blob);
-    var fileName = 'player-recording-' + document.title + '-' + Date.now() + '.json';
+    var fileName = 'recording-' + document.title.toLowerCase().replace(/ /g, '-') + '.json';
     var aEl = document.createElement('a');
     aEl.href = url;
     aEl.setAttribute('download', fileName);
