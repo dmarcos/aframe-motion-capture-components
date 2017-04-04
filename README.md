@@ -31,8 +31,8 @@ presses and touches).
 3. Hit `<space>` to start recording.
 4. Record movements and controller events.
 5. Hit `<space>` again to stop recording.
-6. You'll have an option to save the JSON file.
-6. The recording will play from `localStorage`.
+6. You'll have an option to save the JSON file or upload it by pressing `u` on the keyboard.
+7. The recording will play from `localStorage`.
 
 ```html
 <a-scene avatar-recorder>
