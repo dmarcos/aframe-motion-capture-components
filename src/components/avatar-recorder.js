@@ -4,6 +4,9 @@ var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:warn');
 
 var LOCALSTORAGE_KEY = 'avatar-recording';
 
+/**
+ * @member {object} recordingData - Where all the recording data is stored in memory.
+ */
 AFRAME.registerComponent('avatar-recorder', {
   schema: {
     autoRecord: {default: false},
@@ -84,26 +87,36 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   /**
-   * space = toggle recording, p = stop playing, c = clear local storage
+   * Keyboard shortcuts.
    */
   onKeyDown: function (evt) {
     var key = evt.keyCode;
-    if (key !== 32 && key !== 80 && key !== 67) { return; }
+    var KEYS = {space: 32, c: 67, p: 80, u: 85};
+
     switch (key) {
-      case 32: {
+      // <space>: Toggle recording.
+      case KEYS.space: {
         this.toggleRecording();
         break;
       }
 
-      case 80: {
+      // p: Toggle recording.
+      case KEYS.p: {
         this.toggleReplaying();
         break;
       }
 
-      case 67: {
+      // c: Clear localStorage.
+      case KEYS.c: {
         log('Recording cleared from localStorage.');
         this.recordingData = null;
         localStorage.removeItem(LOCALSTORAGE_KEY);
+        break;
+      }
+
+      // u: Upload recording.
+      case KEYS.u: {
+        this.uploadRecording();
         break;
       }
     }
@@ -229,5 +242,40 @@ AFRAME.registerComponent('avatar-recorder', {
       aEl.click();
       document.body.removeChild(aEl);
     }, 1);
+  },
+
+  /**
+   * Upload recording to file.io.
+   */
+  uploadRecording: function () {
+    var request;
+
+    if (!this.recordingData) {
+      log('Cannot upload without a recording in memory.');
+      return;
+    }
+
+    log('Uploading recording to myjson.com.');
+    request = new XMLHttpRequest();
+    request.open('POST', 'https://api.myjson.com/bins', true);
+    request.setRequestHeader('Content-type', 'application/json');
+    request.onload = function () {
+      var aEl;
+      var url = JSON.parse(this.responseText).uri;
+      log('Recording uploaded to', url);
+      aEl = document.createElement('a');
+      aEl.innerHTML = url;
+      aEl.setAttribute('href', url);
+      aEl.style.position = 'fixed';
+      aEl.style.display = 'block';
+      aEl.style.zIndex = 99999;
+      aEl.style.background = '#111';
+      aEl.style.color = '#FAFAFA';
+      aEl.style.padding = '15px';
+      aEl.style.left = 0;
+      aEl.style.top = 0;
+      document.body.appendChild(aEl);
+    }
+    request.send(JSON.stringify(this.recordingData));
   }
 });

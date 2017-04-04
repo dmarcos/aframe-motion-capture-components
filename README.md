@@ -91,10 +91,11 @@ Or we can specify the path to a recording file in the HTML via the `src` propert
 
 #### Keyboard Shortcuts
 
-| Key   | Description                                   |
-|-------|---------------------------------------------- |
-| space | Toggle recording.                             |
-| c     | Clear recording from localStorage and memory. |
+| Key     | Description                                      |
+| ------- | ----------------------------------------------   |
+| space   | Toggle recording.                                |
+| c       | Clear recording from localStorage and memory.    |
+| u       | Upload recording to file host and get short URL. |
 
 ### avatar-replayer
 
