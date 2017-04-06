@@ -136,7 +136,7 @@ Install and use by directly including the [browser files](dist):
 <head>
   <title>Motion Capture</title>
   <script src="https://aframe.io/releases/0.5.0/aframe.min.js"></script>
-  <script src="https://unpkg.com/aframe-motion-capture/dist/aframe-motion-capture.min.js"></script>
+  <script src="https://unpkg.com/aframe-motion-capture-components/dist/aframe-motion-capture-components.min.js"></script>
 </head>
 <body>
   <a-scene avatar-recorder avatar-replayer>
