@@ -12,7 +12,8 @@ end. This can happen with no user intervention at all.
 We can also record user interactions and develop on the go where there's no VR
 hardware available. We can iterate over the visual aspect or behavior of the
 experience using the recorded user input. [Read more about the motion capture
-components](https://blog.mozvr.com/a-saturday-night/).
+components](https://blog.mozvr.com/a-saturday-night/) and [its use
+cases](https://aframe.io/blog/motion-capture/).
 
 [TRY THE DEMOS](http://swimminglessonsformodernlife.com/aframe-motion-capture-components/)
 

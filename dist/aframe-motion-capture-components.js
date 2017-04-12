@@ -727,8 +727,8 @@
 
 	    log('Uploading recording to myjson.com.');
 	    request = new XMLHttpRequest();
-	    request.open('POST', 'https://api.myjson.com/bins', true);
-	    request.setRequestHeader('Content-type', 'application/json');
+	    request.open('POST', window.location.protocol + '//api.myjson.com/bins', true);
+	    request.setRequestHeader('Content-type', 'application/json; charset=utf-8');
 	    request.onload = function () {
 	      var aEl;
 	      var url = JSON.parse(this.responseText).uri;
