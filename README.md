@@ -50,6 +50,10 @@ The `avatar-recorder` will automatically set the `avatar-replayer` component.
 Though we can specify the `avatar-replayer` explicitly if we want to configure
 it or if we don't need recording (i.e., production).
 
+`avatar-replayer` can be manually disabled from the URL query parameter
+`avatar-replayer-disabled` (e.g.,
+`http://localhost:8000/?avatar-replayer-disabled`).
+
 ##### From localStorage
 
 By default, the `avatar-recorder` will save the recording into `localStorage`
