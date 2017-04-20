@@ -51,8 +51,22 @@ AFRAME.registerComponent('motion-capture-recorder', {
     var detail;
     if (!this.isRecording) { return; }
 
+    // Filter out `target`, not serializable.
+    if ('detail' in evt && 'state' in evt.detail && 'target' in evt.detail.state) {
+      delete evt.detail.state.target;
+    }
+
     detail = {};
     EVENTS[evt.type].props.forEach(function buildDetail (propName) {
+      // Convert GamepadButton to normal JS object.
+      if (propName === 'state') {
+        var stateProp;
+        detail.state = {};
+        for (stateProp in evt.detail.state) {
+          detail.state[stateProp] = evt.detail.state[stateProp];
+        }
+        return;
+      }
       detail[propName] = evt.detail[propName];
     });
 
