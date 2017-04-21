@@ -853,6 +853,11 @@
 	    var queryParamSrc;
 	    var src;
 
+	    // Allow override to display replayer from query param.
+	    if (new URLSearchParams(window.location.search).get('avatar-replayer-disabled') !== null) {
+	      return;
+	    }
+
 	    // From localStorage.
 	    localStorageData = JSON.parse(localStorage.getItem('avatar-recording'));
 	    if (localStorageData) {
