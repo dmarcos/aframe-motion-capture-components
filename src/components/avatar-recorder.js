@@ -144,41 +144,52 @@ AFRAME.registerComponent('avatar-recorder', {
     }
   },
 
-  setupCamera: function () {
+  setupCamera: function (doneCb) {
     var el = this.el;
     var self = this;
-    var setup;
+
     // Grab camera.
     if (el.camera && el.camera.el) {
       prepareCamera(el.camera.el);
       return;
     }
+
     el.addEventListener('camera-set-active', setup)
-    setup = function (evt) { prepareCamera(evt.detail.cameraEl); };
+
+    function setup (evt) {
+      prepareCamera(evt.detail.cameraEl);
+    };
 
     function prepareCamera (cameraEl) {
-      if (self.cameraEl) { self.cameraEl.removeAttribute('motion-capture-recorder'); }
+      if (self.cameraEl) {
+        self.cameraEl.removeAttribute('motion-capture-recorder');
+      }
       self.cameraEl = cameraEl;
-      self.cameraEl.setAttribute('motion-capture-recorder', {
+      cameraEl.setAttribute('motion-capture-recorder', {
         autoRecord: false,
         visibleStroke: false
       });
       el.removeEventListener('camera-set-active', setup);
+      doneCb(cameraEl)
     }
   },
 
   startRecording: function () {
     var trackedControllerEls = this.trackedControllerEls;
     var keys;
+    var self = this;
+
     if (this.isRecording) { return; }
+
     keys = Object.keys(trackedControllerEls);
     log('Starting recording!');
     this.stopReplaying();
-    this.setupCamera();
-    this.isRecording = true;
-    this.cameraEl.components['motion-capture-recorder'].startRecording();
-    keys.forEach(function (id) {
-      trackedControllerEls[id].components['motion-capture-recorder'].startRecording();
+    this.setupCamera(function cameraSetUp () {
+      self.isRecording = true;
+      self.cameraEl.components['motion-capture-recorder'].startRecording();
+      keys.forEach(function startRecordingControllers (id) {
+        trackedControllerEls[id].components['motion-capture-recorder'].startRecording();
+      });
     });
   },
 

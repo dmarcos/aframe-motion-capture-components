@@ -20,6 +20,8 @@ suite('avatar-recorder', function () {
     sceneEl.addEventListener('componentinitialized', evt => {
       if (evt.detail.name !== 'avatar-recorder') { return; }
       component = sceneEl.components['avatar-recorder'];
+      // Don't save recordings in test.
+      this.sinon.stub(component, 'saveRecordingFile');
       done();
     });
     sceneEl.setAttribute('avatar-recorder', '');
@@ -33,6 +35,7 @@ suite('avatar-recorder', function () {
   });
 
   test('gets the camera element', function (done) {
+    component.startRecording();
     sceneEl.addEventListener('camera-set-active', evt => {
       setTimeout(() => {
         assert.equal(component.cameraEl, sceneEl.camera.el);
@@ -42,6 +45,7 @@ suite('avatar-recorder', function () {
   });
 
   test('sets motion-capture-recorder on camera', function (done) {
+    component.startRecording();
     sceneEl.addEventListener('camera-set-active', evt => {
       setTimeout(() => {
         assert.ok(sceneEl.camera.el.getAttribute('motion-capture-recorder'));
@@ -51,32 +55,29 @@ suite('avatar-recorder', function () {
   });
 
   test('sets motion-capture-recorder on tracked controllers', function (done) {
-    const controllers = component.trackedControllerEls;
+    var controllers;
+
+    // Create controllers.
     const c1 = document.createElement('a-entity');
     c1.setAttribute('id', 'c1');
     c1.setAttribute('tracked-controls', '');
-
     const c2 = document.createElement('a-entity');
     c2.setAttribute('id', 'c2');
     c2.setAttribute('tracked-controls', '');
 
-    sceneEl.components['avatar-recorder'].throttledTick();
-    assert.notOk('c1' in controllers);
-    assert.notOk('c2' in controllers);
+    component.throttledTick();
+    controllers = component.trackedControllerEls;
+    assert.notOk('c1' in controllers, 'Controller 1 not appended yet');
+    assert.notOk('c2' in controllers, 'Controller 2 not appended yet');
 
     sceneEl.appendChild(c1);
+    sceneEl.appendChild(c2);
     setTimeout(() => {
-      sceneEl.components['avatar-recorder'].throttledTick();
-      assert.ok('c1' in controllers);
-      assert.notOk('c2' in controllers);
-
-      sceneEl.appendChild(c2);
-      setTimeout(() => {
-        sceneEl.components['avatar-recorder'].throttledTick();
-        assert.ok('c1' in controllers);
-        assert.ok('c2' in controllers);
-        done();
-      });
+      component.throttledTick();
+      controllers = component.trackedControllerEls;
+      assert.ok('c1' in controllers, 'Controller 1 detected');
+      assert.ok('c2' in controllers, 'Controller 2 detected');
+      done();
     });
   });
 
@@ -104,6 +105,7 @@ suite('avatar-recorder', function () {
   });
 
   test('stores recording in localStorage', function (done) {
+    component.startRecording();
     sceneEl.addEventListener('camera-set-active', evt => {
       sceneEl.setAttribute('avatar-recorder', 'autoPlay', false);
       sceneEl.setAttribute('avatar-recorder', 'localStorage', true);
@@ -117,6 +119,7 @@ suite('avatar-recorder', function () {
   });
 
   test('does not store recording in localStorage if not set', function (done) {
+    component.startRecording();
     sceneEl.addEventListener('camera-set-active', evt => {
       sceneEl.setAttribute('avatar-recorder', 'autoPlay', false);
       sceneEl.setAttribute('avatar-recorder', 'localStorage', false);
@@ -129,6 +132,7 @@ suite('avatar-recorder', function () {
   });
 
   test('clears localStorage and recording on shortcut', function (done) {
+    component.startRecording();
     sceneEl.addEventListener('camera-set-active', evt => {
       sceneEl.setAttribute('avatar-recorder', 'autoPlay', false);
       sceneEl.setAttribute('avatar-recorder', 'localStorage', true);
@@ -172,17 +176,18 @@ suite('avatar-recorder (replay from localStorage)', function () {
         camera: {poses: [{timestamp: 0}], events: []},
       }));
       setTimeout(() => {
+        var component;
         sceneEl.setAttribute('avatar-recorder', 'autoPlay: true');
-        setTimeout(() => {
-          assert.ok(sceneEl.components['avatar-replayer'], 'Replayer is set');
-          assert.ok(sceneEl.components['avatar-replayer'].isReplaying);
-          done();
-        });
+        component = sceneEl.components['avatar-recorder'];
+        component.replayRecording();  // Just call now to bypass the 500ms setTimeout on play.
+        assert.ok(sceneEl.components['avatar-replayer'], 'Replayer is set');
+        assert.ok(sceneEl.components['avatar-replayer'].isReplaying);
+        done();
       });
     });
   });
 
-  test('autoPlays from localStorage with replayer set', function (done) {
+  test('autoPlays from localStorage with replayer set', function () {
     sceneEl.setAttribute('avatar-replayer', 'autoPlay: true');
     const startReplayingSpy = this.sinon.spy(sceneEl.components['avatar-replayer'],
                                              'startReplaying');
@@ -192,11 +197,9 @@ suite('avatar-recorder (replay from localStorage)', function () {
     }));
 
     sceneEl.setAttribute('avatar-recorder', 'autoPlay: true');
-    setTimeout(() => {
-      assert.ok(startReplayingSpy.called);
-      assert.ok(startReplayingSpy.getCalls()[0].args[0].camera.poses);
-      done();
-    });
+    sceneEl.components['avatar-recorder'].replayRecording();  // Call now to bypass 500ms TO.
+    assert.ok(startReplayingSpy.called);
+    assert.ok(startReplayingSpy.getCalls()[0].args[0].camera.poses);
   });
 
   test('does not autoPlay if nothing in localStorage', function (done) {
@@ -286,6 +289,8 @@ suite('motion-capture-recorder', function () {
     el.addEventListener('componentinitialized', evt => {
       if (evt.detail.name !== 'motion-capture-recorder') { return; }
       component = el.components['motion-capture-recorder'];
+      // Don't save recordings in test.
+      this.sinon.stub(component, 'saveCapture');
       done();
     });
     el.setAttribute('motion-capture-recorder', '');
@@ -335,11 +340,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('buttonchanged', {id: 'foo', state: true});
+      el.emit('buttonchanged', {id: 'foo', state: {pressed: true}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'buttonchanged');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {pressed: true}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -349,11 +355,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('buttonup', {id: 'foo', state: true});
+      el.emit('buttonup', {id: 'foo', state: {pressed: true}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'buttonup');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {pressed: true}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -363,11 +370,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('buttondown', {id: 'foo', state: true});
+      el.emit('buttondown', {id: 'foo', state: {pressed: true}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'buttondown');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {pressed: true}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -377,11 +385,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('touchstart', {id: 'foo', state: true});
+      el.emit('touchstart', {id: 'foo', state: {pressed: true}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'touchstart');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {pressed: true}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -391,11 +400,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('touchend', {id: 'foo', state: true});
+      el.emit('touchend', {id: 'foo', state: {pressed: true}});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'touchend');
-        assert.shallowDeepEqual(component.recordedEvents[0].detail, {id: 'foo', state: true});
+        assert.shallowDeepEqual(component.recordedEvents[0].detail,
+                                {id: 'foo', state: {pressed: true}});
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
       });
@@ -420,6 +430,7 @@ suite('motion-capture-recorder', function () {
 
   suite('saveCapture', function () {
     test('appends download link', function (done) {
+      component.saveCapture.restore();
       const observer = new MutationObserver(mutations => {
         mutations.forEach(mutation => {
           if (mutation.type !== 'childList') { return; }
@@ -500,9 +511,9 @@ suite('motion-capture-replayer', function () {
     });
 
     component.startReplayingEvents([
-      {timestamp: 100, name: 'buttondown', detail: {id: 'foo', state: true}},
+      {timestamp: 100, name: 'buttondown', detail: {id: 'foo', state: {pressed: true}}},
       {timestamp: 200, name: 'axismove', detail: {id: 'bar', axis: {x: 1, y: 1}}},
-      {timestamp: 250, name: 'touchend', detail: {id: 'baz', state: true}}
+      {timestamp: 250, name: 'touchend', detail: {id: 'baz', state: {pressed: true}}}
     ]);
     component.tick(150, 50);
   });

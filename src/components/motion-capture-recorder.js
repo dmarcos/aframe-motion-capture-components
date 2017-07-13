@@ -52,7 +52,8 @@ AFRAME.registerComponent('motion-capture-recorder', {
     if (!this.isRecording) { return; }
 
     // Filter out `target`, not serializable.
-    if ('detail' in evt && 'state' in evt.detail && 'target' in evt.detail.state) {
+    if ('detail' in evt && 'state' in evt.detail && typeof evt.detail.state === 'object' &&
+        'target' in evt.detail.state) {
       delete evt.detail.state.target;
     }
 

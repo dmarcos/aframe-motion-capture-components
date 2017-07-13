@@ -5,10 +5,11 @@ var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:warn');
 
 AFRAME.registerComponent('avatar-replayer', {
   schema: {
-    src: {default: ''},
+    autoPlay: {default: true},
     loop: {default: false},
     spectatorMode: {default: false},
-    spectatorPosition: {default: '0 1.6 2', type: 'vec3'}
+    spectatorPosition: {default: {x: 0, y: 1.6, z: 2}, type: 'vec3'},
+    src: {default: ''}
   },
 
   init: function () {
@@ -24,6 +25,22 @@ AFRAME.registerComponent('avatar-replayer', {
     this.onKeyDown = this.onKeyDown.bind(this);
   },
 
+  update: function (oldData) {
+    var data = this.data;
+    if (oldData.src === data.src) { return; }
+    if (data.autoPlay) {
+      this.replayRecordingFromSource(oldData);
+    }
+  },
+
+  play: function () {
+    window.addEventListener('keydown', this.onKeyDown);
+  },
+
+  pause: function () {
+    window.removeEventListener('keydown', this.onKeyDown);
+  },
+
   remove: function () {
     this.stopReplaying();
   },
@@ -37,14 +54,6 @@ AFRAME.registerComponent('avatar-replayer', {
     this.currentCameraEl.removeAttribute('data-aframe-default-camera');
     this.el.removeEventListener('camera-set-active', this.setupCameras);
     this.initSpectatorCamera();
-  },
-
-  play: function () {
-    window.addEventListener('keydown', this.onKeyDown);
-  },
-
-  pause: function () {
-    window.removeEventListener('keydown', this.onKeyDown);
   },
 
   /**
@@ -63,12 +72,6 @@ AFRAME.registerComponent('avatar-replayer', {
 
   toggleSpectatorCamera: function () {
     this.el.setAttribute('avatar-replayer', 'spectatorMode', !this.data.spectatorMode);
-  },
-
-  update: function (oldData) {
-    var data = this.data;
-    if (oldData.src === data.src) { return; }
-    this.replayRecordingFromSource(oldData);
   },
 
   initSpectatorCamera: function () {
@@ -219,7 +222,10 @@ AFRAME.registerComponent('avatar-replayer', {
         self.puppetEl.removeComponent('motion-capture-replayer');
       } else {
         el = document.querySelector('#' + key);
-        if (!el) { warn('No element with id ' + key); }
+        if (!el) {
+          warn('No element with id ' + key);
+          return;
+        }
         el.removeComponent('motion-capture-replayer');
       }
     });

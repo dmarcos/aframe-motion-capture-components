@@ -110,6 +110,9 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.currentPoseTime = poses[0].timestamp;
   },
 
+  /**
+   * @param events {Array} - Array of events with timestamp, name, and detail.
+   */
   startReplayingEvents: function (events) {
     var firstEvent;
     this.isReplaying = true;
@@ -140,10 +143,11 @@ AFRAME.registerComponent('motion-capture-replayer', {
     currentEvent = playingEvents && playingEvents[this.currentEventIndex];
     this.currentPoseTime += delta;
     this.currentEventTime += delta;
-    // determine next pose
+    // Determine next pose.
+    // Comparing currentPoseTime to currentEvent.timestamp is not a typo.
     while ((currentPose && this.currentPoseTime >= currentPose.timestamp) ||
            (currentEvent && this.currentPoseTime >= currentEvent.timestamp)) {
-      // pose
+      // Pose.
       if (currentPose && this.currentPoseTime >= currentPose.timestamp) {
         if (this.currentPoseIndex === playingPoses.length - 1) {
           if (this.data.loop) {
@@ -157,7 +161,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
         this.currentPoseIndex += 1;
         currentPose = playingPoses[this.currentPoseIndex];
       }
-      // event
+      // Event.
       if (currentEvent && this.currentPoseTime >= currentEvent.timestamp) {
         if (this.currentEventIndex === playingEvents.length && this.data.loop) {
           this.currentEventIndex = 0;
