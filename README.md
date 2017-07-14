@@ -80,19 +80,28 @@ Or we can specify the path to a recording file in the HTML via the `src` propert
 </a-scene>
 ```
 
-## Component APIs
+## API
 
 ### avatar-recorder
 
-| Property          | Description                                             | Default Value |
-| ----------------- | ------------------------------------------------------- | ------------- |
-| autoPlay          | A recorded sesion plays on page load.                   | true          |
-| autoRecord        | Recording starts on page load.                          | false         |
-| localStorage      | The recording is persisted on local storage.            | false         |
-| loop              | The recording replays in a loop.                        | false         |
-| saveFile          | The user is prompted to save a JSON of the recording.   | false         |
-| spectatorMode     | Replay in 3rd person mode.                              | false         |
-| spectatorPosition | Initial position of the 3rd person camera.              | 0 0 0         |
+| Property          | Description                                                                | Default Value |
+| ----------------- | -------------------------------------------------------                    | ------------- |
+| autoPlay          | Whether to play recording on page load.                                    | true          |
+| autoRecord        | Whether to start recording on page load.                                   | false         |
+| autoSaveFile      | Whether to prompt to save a JSON of the recording to file system.          | true          |
+| localStorage      | Whether to persist recordings in localStorage keyed as `avatarRecordings`. | false         |
+| loop              | Whether to replay recording in a loop.                                     | false         |
+| recordingName     | Name of recording to store in `localStorage.getItem('avatarRecordings')`.  | default       |
+| spectatorMode     | Whether to replay recording in third person mode.                          | false         |
+| spectatorPosition | Initial position of the spectator camera.                                  | 0 0 0         |
+
+#### Methods
+
+| Method                        | Description                                                                                          |
+| -----------------             | -------------------------------------------------------                                              |
+| saveRecordingFile (recording) | Save recording to file. `recording` can either be raw data or recording name stored in localStorage. |
+| startRecording ()             | Start recording                                                                                      |
+| stopRecording ()              | Stop recording.                                                                                      |
 
 #### Keyboard Shortcuts
 
@@ -104,12 +113,22 @@ Or we can specify the path to a recording file in the HTML via the `src` propert
 
 ### avatar-replayer
 
-| Property          | Description                                | Default Value |
-| ----------------- | ------------------------------------------ | ------------- |
-| loop              | The recording replays in a loop.           | false         |
-| src               | The recording data can be hosted in a URL. | ''            |
-| spectatorMode     | Replay in 3rd person mode.                 | false         |
-| spectatorPosition | Initial position of the 3rd person camera  | 0 0 0         |
+| Property          | Description                                       | Default Value |
+| ----------------- | ------------------------------------------        | ------------- |
+| autoPlay          | Whether to play recording on page load.           | true          |
+| loop              | Whether to replay recording in a loop.            | false         |
+| recordingName     | Specify to replay recording from localStorage.    | default       |
+| spectatorMode     | Whether to replay recording in third person mode. | false         |
+| spectatorPosition | Initial position of the spectator camera.         | 0 0 0         |
+| src               | Path or URL to recording data.                    | ''            |
+
+#### Methods
+
+| Method                         | Description                                                                               |
+| -----------------              | -------------------------------------------------------                                   |
+| replayRecordingFromSource ()   | Replay recording from either `recordingName` for localStorage or `src` for external file. |
+| startReplaying (recordingData) | Start replaying given passed recording data (object).                                     |
+| stopReplaying ()               | Stop replaying.                                                                           |
 
 ### motion-capture-replayer
 
@@ -124,7 +143,7 @@ Or we can specify the path to a recording file in the HTML via the `src` propert
 
 | Property          | Description                                           | Default Value |
 | --------          | ----------------------------------------------------- | ------------- |
-| autorRecord       | The component start recording at page load.           | false         |
+| autoRecord       | The component start recording at page load.           | false         |
 | enabled           |                                                       | true          |
 | hand              | The controller that will trigger recording.           | 'right'       |
 | recordingControls | Recording is activated by the controller trigger      | false         |

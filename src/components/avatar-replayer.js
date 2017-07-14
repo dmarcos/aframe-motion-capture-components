@@ -1,4 +1,5 @@
 /* global THREE, AFRAME  */
+var constants = require('../constants');
 var error = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:error');
 var log = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:info');
 var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:warn');
@@ -7,6 +8,7 @@ AFRAME.registerComponent('avatar-replayer', {
   schema: {
     autoPlay: {default: true},
     loop: {default: false},
+    recordingName: {default: constants.DEFAULT_RECORDING_NAME},
     spectatorMode: {default: false},
     spectatorPosition: {default: {x: 0, y: 1.6, z: 2}, type: 'vec3'},
     src: {default: ''}
@@ -74,20 +76,29 @@ AFRAME.registerComponent('avatar-replayer', {
     this.el.setAttribute('avatar-replayer', 'spectatorMode', !this.data.spectatorMode);
   },
 
+  /**
+   * Create and activate spectator camera if in spectator mode.
+   */
   initSpectatorCamera: function () {
-    var spectatorCameraEl = this.spectatorCameraEl =
-      this.el.querySelector('#spectatorCamera') || document.createElement('a-entity');
-    var spectatorCameraRigEl = this.spectatorCameraRigEl =
-      this.el.querySelector('#spectatorCameraRig') || document.createElement('a-entity');
-    if (this.el.querySelector('#spectatorCameraRig')
-        || !this.data.spectatorMode) { return; }
+    var data = this.data;
+    var sceneEl = this.el;
+    var spectatorCameraEl;
+    var spectatorCameraRigEl;
+
+    if (!this.data.spectatorMode || this.el.querySelector('#spectatorCameraRig')) { return; }
+
+    spectatorCameraEl = this.spectatorCameraEl =
+      sceneEl.querySelector('#spectatorCamera') || document.createElement('a-entity');
+    spectatorCameraRigEl = this.spectatorCameraRigEl =
+      sceneEl.querySelector('#spectatorCameraRig') || document.createElement('a-entity');
+
     spectatorCameraEl.id = 'spectatorCamera';
     spectatorCameraRigEl.id = 'spectatorCameraRig';
     spectatorCameraEl.setAttribute('camera', '');
     spectatorCameraEl.setAttribute('look-controls', '');
     spectatorCameraEl.setAttribute('wasd-controls', '');
     spectatorCameraRigEl.appendChild(spectatorCameraEl);
-    this.el.appendChild(this.spectatorCameraRigEl);
+    sceneEl.appendChild(spectatorCameraRigEl);
   },
 
   /**
@@ -104,25 +115,26 @@ AFRAME.registerComponent('avatar-replayer', {
       return;
     }
 
-    // From localStorage.
-    localStorageData = JSON.parse(localStorage.getItem('avatar-recording'));
-    if (localStorageData) {
-      log('Replaying from localStorage.');
-      this.startReplaying(localStorageData);
-      return;
+    // From localStorage if recordingName specified and data exists.
+    if (data.recordingName) {
+      localStorageData = JSON.parse(localStorage.getItem(constants.LS_RECORDINGS)) || {};
+      localStorageData = localStorageData[data.recordingName];
+      if (localStorageData) {
+        log('Replaying from localStorage.');
+        this.startReplaying(localStorageData);
+        return;
+      }
     }
 
-    // From file.
+    // From external file.
     queryParamSrc = this.getSrcFromSearchParam();
     src = data.src || queryParamSrc;
     if (!src || oldSrc === data.src) { return; }
-
     if (data.src) {
       log('Replaying from component `src`', src);
     } else if (queryParamSrc) {
       log('Replaying from query parameter `avatar-recording`', src);
     }
-
     this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
   },
 
@@ -183,26 +195,38 @@ AFRAME.registerComponent('avatar-replayer', {
       puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
       puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
     });
+
     this.configureCamera();
   },
 
+  /**
+   * Set the proper camera for replay.
+   */
   configureCamera: function () {
     var data = this.data;
     var currentCameraEl = this.currentCameraEl;
     var spectatorCameraEl = this.spectatorCameraEl;
-    if (!spectatorCameraEl.hasLoaded) {
-      spectatorCameraEl.addEventListener('loaded', this.configureCamera.bind(this));
-      return;
-    }
+
     if (data.spectatorMode) {
+      if (!spectatorCameraEl.hasLoaded) {
+        spectatorCameraEl.addEventListener('loaded', this.configureCamera.bind(this));
+        return;
+      }
+
+      // Position and activate spectator camera.
       this.spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
       spectatorCameraEl.setAttribute('camera', 'active', true);
     } else {
+      // Activate normal camera.
       currentCameraEl.setAttribute('camera', 'active', true);
     }
+
     this.configureHeadGeometry();
   },
 
+  /**
+   * Create head geometry for spectator mode.
+   */
   configureHeadGeometry: function() {
     var currentCameraEl = this.currentCameraEl;
     if (currentCameraEl.getObject3D('mesh')) { return; }
@@ -212,12 +236,12 @@ AFRAME.registerComponent('avatar-replayer', {
   },
 
   stopReplaying: function () {
-    var keys;
     var self = this;
+
     if (!this.isReplaying || !this.replayData) { return; }
+
     this.isReplaying = false;
-    keys = Object.keys(this.replayData);
-    keys.forEach(function (key) {
+    Object.keys(this.replayData).forEach(function removeReplayers (key) {
       if (key === 'camera') {
         self.puppetEl.removeComponent('motion-capture-replayer');
       } else {

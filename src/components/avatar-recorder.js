@@ -1,8 +1,7 @@
 /* global THREE, AFRAME  */
+var constants = require('../constants');
 var log = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:info');
 var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:warn');
-
-var LOCALSTORAGE_KEY = 'avatar-recording';
 
 /**
  * @member {object} recordingData - Where all the recording data is stored in memory.
@@ -11,10 +10,11 @@ AFRAME.registerComponent('avatar-recorder', {
   schema: {
     autoRecord: {default: false},
     autoPlay: {default: true},
+    autoSaveFile: {default: true},
     spectatorPlay: {default: false},
     spectatorPosition: {default: '0 1.6 0', type: 'vec3'},
     localStorage: {default: true},
-    saveFile: {default: true},
+    recordingName: {default: constants.DEFAULT_RECORDING_NAME},
     loop: {default: true}
   },
 
@@ -27,9 +27,18 @@ AFRAME.registerComponent('avatar-recorder', {
   replayRecording: function () {
     var data = this.data;
     var el = this.el;
+    var recordingData;
+    var recordings;
 
-    var recordingData = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
+    recordings = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_ARRAY));
+    if (recordings && recordings[data.recordingName]) {
+      recordingData = recordings[data.recordingName];
+    } else {
+      recordingData = this.recordingData;
+    }
+
     if (!recordingData) { return; }
+
     log('Replaying recording.');
     el.setAttribute('avatar-replayer', {
       loop: data.loop,
@@ -40,10 +49,10 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   stopReplaying: function () {
-    var avatarPlayer = this.el.components['avatar-replayer'];
-    if (!avatarPlayer) { return; }
+    var avatarReplayer = this.el.components['avatar-replayer'];
+    if (!avatarReplayer || !avatarReplayer.isReplaying) { return; }
     log('Stopped replaying.');
-    avatarPlayer.stopReplaying();
+    avatarReplayer.stopReplaying();
     this.el.setAttribute('avatar-replayer', 'spectatorMode', false);
   },
 
@@ -108,9 +117,7 @@ AFRAME.registerComponent('avatar-recorder', {
 
       // c: Clear localStorage.
       case KEYS.c: {
-        log('Recording cleared from localStorage.');
-        this.recordingData = null;
-        localStorage.removeItem(LOCALSTORAGE_KEY);
+        this.clearRecordings();
         break;
       }
 
@@ -120,6 +127,12 @@ AFRAME.registerComponent('avatar-recorder', {
         break;
       }
     }
+  },
+
+  clearRecordings: function () {
+    log('Recordings cleared from localStorage.');
+    this.recordingData = null;
+    localStorage.removeItem(constants.LS_RECORDINGS);
   },
 
   toggleReplaying: function () {
@@ -222,41 +235,70 @@ AFRAME.registerComponent('avatar-recorder', {
   },
 
   saveRecording: function () {
-    var data = this.getJSONData()
+    var recordingData = this.getJSONData()
     if (this.data.localStorage) {
       log('Recording saved to localStorage.');
-      this.saveToLocalStorage(data);
+      this.saveToLocalStorage(recordingData);
     }
-    if (this.data.saveFile) {
+    if (this.data.autoSaveFile) {
       log('Recording saved to file.');
-      this.saveRecordingFile(data);
+      this.saveRecordingFile(recordingData);
     }
   },
 
-  saveToLocalStorage: function (data) {
-    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(data));
+  saveToLocalStorage: function (recordingData) {
+    var data = this.data;
+    var recordings;
+    recordings = JSON.parse(localStorage.getItem(constants.LS_RECORDINGS)) || {};
+    recordings[data.recordingName] = recordingData;
+    localStorage.setItem(constants.LS_RECORDINGS, JSON.stringify(recordings));
   },
 
-  saveRecordingFile: function (data) {
-    var jsonData = JSON.stringify(data);
-    var type = this.data.binaryFormat ? 'application/octet-binary' : 'application/json';
-    var blob = new Blob([jsonData], {type: type});
-    var url = URL.createObjectURL(blob);
-    var fileName = 'recording-' + document.title.toLowerCase().replace(/ /g, '-') + '.json';
-    var aEl = document.createElement('a');
+  /**
+   * Download recording.
+   *
+   * @param dataOrName - Recording data or name of recording to fetch from localStorage.
+   */
+  saveRecordingFile: function (dataOrName) {
+    var aEl;
+    var blob;
+    var fileName;
+    var jsonData;
+    var url;
+
+    // Get data.
+    if (typeof dataOrName === 'object') {
+      jsonData = JSON.stringify(dataOrName);
+    } else {
+      jsonData = localStorage.getItem(constants.LS_RECORDINGS)[dataOrName];
+    }
+
+    // Compose data blob.
+    blob = new Blob([jsonData], {
+      type: this.data.binaryFormat ? 'application/octet-binary' : 'application/json'
+    });
+    url = URL.createObjectURL(blob);
+
+    // Create filename.
+    fileName = 'recording-' + document.title.toLowerCase().replace(/ /g, '-') + '.json';
+
+    // Create download link.
+    aEl = document.createElement('a');
     aEl.href = url;
     aEl.setAttribute('download', fileName);
-    aEl.innerHTML = 'downloading...';
+    aEl.innerHTML = 'Downloading...';
     aEl.style.display = 'none';
+
+    // Click download link.
     document.body.appendChild(aEl);
     setTimeout(function () {
       aEl.click();
       document.body.removeChild(aEl);
-    }, 1);
+    });
   },
 
   /**
-   * Upload recording to file.io.
+   * Upload recording to myjson.com.
    */
   uploadRecording: function () {
     var request;
