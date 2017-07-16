@@ -30,7 +30,7 @@ AFRAME.registerComponent('avatar-recorder', {
     var recordingData;
     var recordings;
 
-    recordings = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_ARRAY));
+    recordings = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS));
     if (recordings && recordings[data.recordingName]) {
       recordingData = recordings[data.recordingName];
     } else {
@@ -132,7 +132,7 @@ AFRAME.registerComponent('avatar-recorder', {
   clearRecordings: function () {
     log('Recordings cleared from localStorage.');
     this.recordingData = null;
-    localStorage.removeItem(constants.LS_RECORDINGS);
+    localStorage.removeItem(constants.LOCALSTORAGE_RECORDINGS);
   },
 
   toggleReplaying: function () {
@@ -249,9 +249,9 @@ AFRAME.registerComponent('avatar-recorder', {
   saveToLocalStorage: function (recordingData) {
     var data = this.data;
     var recordings;
-    recordings = JSON.parse(localStorage.getItem(constants.LS_RECORDINGS)) || {};
+    recordings = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)) || {};
     recordings[data.recordingName] = recordingData;
-    localStorage.setItem(constants.LS_RECORDINGS, JSON.stringify(recordings));
+    localStorage.setItem(constants.LOCALSTORAGE_RECORDINGS, JSON.stringify(recordings));
   },
 
   /**
@@ -270,7 +270,7 @@ AFRAME.registerComponent('avatar-recorder', {
     if (typeof dataOrName === 'object') {
       jsonData = JSON.stringify(dataOrName);
     } else {
-      jsonData = localStorage.getItem(constants.LS_RECORDINGS)[dataOrName];
+      jsonData = localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)[dataOrName];
     }
 
     // Compose data blob.
