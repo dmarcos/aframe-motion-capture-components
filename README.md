@@ -12,14 +12,21 @@ end. This can happen with no user intervention at all.
 We can also record user interactions and develop on the go where there's no VR
 hardware available. We can iterate over the visual aspect or behavior of the
 experience using the recorded user input. [Read more about the motion capture
-components](https://blog.mozvr.com/a-saturday-night/) and [its use
-cases](https://aframe.io/blog/motion-capture/).
+components](https://blog.mozvr.com/a-saturday-night/) and [its use cases as
+development tools](https://aframe.io/blog/motion-capture/).
+
+The A-Frame Inspector uses these components to power the Motion Capture
+Development Tools UI.
 
 [TRY THE DEMOS](http://swimminglessonsformodernlife.com/aframe-motion-capture-components/)
 
 ![](https://cloud.githubusercontent.com/assets/674727/24481580/0ac87ace-14a0-11e7-8281-c032c90f0529.gif)
 
 ## Usage
+
+The motion capture components is most easily used by opening the A-Frame
+Inspector (`<ctrl> + <alt> + i`), and hitting `m` to open the Motion Capture
+Development Tools UI.
 
 ### Avatar Recording
 
@@ -37,12 +44,12 @@ presses and touches).
 
 ```html
 <a-scene avatar-recorder>
-  <a-entity id="controller1" hand-controls"></a-entity>
-  <a-entity id="controller2" hand-controls"></a-entity>
+  <a-entity id="controller1" hand-controls></a-entity>
+  <a-entity id="controller2" hand-controls></a-entity>
 </a-scene>
 ```
 
-Hit `c` on the keyboard to clear the recording from `localStorage`.
+Hit `c` on the keyboard to clear all recordings from `localStorage`.
 
 ### Avatar Replaying
 
@@ -57,7 +64,9 @@ it or if we don't need recording (i.e., production).
 ##### From localStorage
 
 By default, the `avatar-recorder` will save the recording into `localStorage`
-which the `avatar-replayer` will replay from by default.
+which the `avatar-replayer` will replay from by default. Recordings are stored
+in `localStorage.getItem('avatarRecordings')` and are keyed `recordingName`
+(defaults to `default`).
 
 Hit `p` to toggle playback.
 
@@ -108,10 +117,15 @@ Or we can specify the path to a recording file in the HTML via the `src` propert
 | Key     | Description                                      |
 | ------- | ----------------------------------------------   |
 | space   | Toggle recording.                                |
+| q       | Toggle spectator mode camera.                    |
 | c       | Clear recording from localStorage and memory.    |
 | u       | Upload recording to file host and get short URL. |
 
 ### avatar-replayer
+
+For spectator mode, `avatar-replayer` will create a head geometry to make the
+camera visible, represented as a pink box with eyes. This set as
+`cameraEl.getObject3D('replayerMesh')` but is not visible by default.
 
 | Property          | Description                                       | Default Value |
 | ----------------- | ------------------------------------------        | ------------- |
@@ -159,7 +173,7 @@ Install and use by directly including the [browser files](dist):
 ```html
 <head>
   <title>Motion Capture</title>
-  <script src="https://aframe.io/releases/0.5.0/aframe.min.js"></script>
+  <script src="https://aframe.io/releases/0.6.0/aframe.min.js"></script>
   <script src="https://unpkg.com/aframe-motion-capture-components/dist/aframe-motion-capture-components.min.js"></script>
 </head>
 <body>
