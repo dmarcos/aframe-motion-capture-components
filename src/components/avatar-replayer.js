@@ -30,9 +30,18 @@ AFRAME.registerComponent('avatar-replayer', {
 
   update: function (oldData) {
     var data = this.data;
-    if (oldData.src === data.src) { return; }
-    if (data.autoPlay) {
+
+    if ('spectatorMode' in oldData && oldData.spectatorMode !== data.spectatorMode) {
+      if (data.spectatorMode) {
+        this.activateSpectatorCamera();
+      } else {
+        this.deactivateSpectatorCamera();
+      }
+    }
+
+    if (oldData.src !== data.src && data.autoPlay) {
       this.replayRecordingFromSource(oldData);
+      this.activateSpectatorCamera();
     }
   },
 
@@ -66,6 +75,7 @@ AFRAME.registerComponent('avatar-replayer', {
     }
     this.el.removeEventListener('camera-set-active', this.setupCameras);
     this.initSpectatorCamera();
+    this.configureHeadGeometry();
   },
 
   /**
@@ -73,17 +83,32 @@ AFRAME.registerComponent('avatar-replayer', {
    */
   onKeyDown: function (evt) {
     var key = evt.keyCode;
-    if (key !== 9) { return; }
     switch (key) {
-      case 9: {
-        this.toggleSpectatorCamera();
+      // q.
+      case 81: {
+        this.el.setAttribute('avatar-replayer', 'spectatorMode', !this.data.spectatorMode);
         break;
       }
     }
   },
 
-  toggleSpectatorCamera: function () {
-    this.el.setAttribute('avatar-replayer', 'spectatorMode', !this.data.spectatorMode);
+  activateSpectatorCamera: function () {
+    var spectatorCameraEl = this.spectatorCameraEl;
+
+    if (!spectatorCameraEl.hasLoaded) {
+      spectatorCameraEl.addEventListener('loaded', this.activateSpectatorCamera.bind(this));
+      return;
+    }
+
+    log('Activating spectator camera');
+    spectatorCameraEl.setAttribute('camera', 'active', true);
+    this.cameraEl.getObject3D('replayerMesh').visible = true;
+  },
+
+  deactivateSpectatorCamera: function () {
+    log('Deactivating spectator camera');
+    this.cameraEl.setAttribute('camera', 'active', true);
+    this.cameraEl.getObject3D('replayerMesh').visible = false;
   },
 
   /**
@@ -95,18 +120,19 @@ AFRAME.registerComponent('avatar-replayer', {
     var spectatorCameraEl;
     var spectatorCameraRigEl;
 
-    if (!this.data.spectatorMode || this.el.querySelector('#spectatorCameraRig')) { return; }
+    if (this.el.querySelector('#spectatorCameraRig')) { return; }
 
     spectatorCameraEl = this.spectatorCameraEl =
       sceneEl.querySelector('#spectatorCamera') || document.createElement('a-entity');
     spectatorCameraRigEl = this.spectatorCameraRigEl =
       sceneEl.querySelector('#spectatorCameraRig') || document.createElement('a-entity');
+    spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
 
     spectatorCameraEl.id = 'spectatorCamera';
     spectatorCameraRigEl.id = 'spectatorCameraRig';
-    spectatorCameraEl.setAttribute('camera', '');
+    spectatorCameraEl.setAttribute('camera', {active: data.spectatorMode, userHeight: 0});
     spectatorCameraEl.setAttribute('look-controls', '');
-    spectatorCameraEl.setAttribute('wasd-controls', '');
+    spectatorCameraEl.setAttribute('wasd-controls', {fly: true});
     spectatorCameraRigEl.appendChild(spectatorCameraEl);
     sceneEl.appendChild(spectatorCameraRigEl);
   },
@@ -205,34 +231,11 @@ AFRAME.registerComponent('avatar-replayer', {
       puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
       puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
     });
-
-    this.activateSpectatorCamera();
-  },
-
-  /**
-   * Set the proper camera for replay.
-   */
-  activateSpectatorCamera: function () {
-    var data = this.data;
-    var cameraEl = this.cameraEl;
-    var spectatorCameraEl = this.spectatorCameraEl;
-
-    if (!data.spectatorMode) { return; }
-
-    if (!spectatorCameraEl.hasLoaded) {
-      spectatorCameraEl.addEventListener('loaded', this.activateSpectatorCamera.bind(this));
-
-      return;
-    }
-
-    // Position and activate spectator camera.
-    this.spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
-    spectatorCameraEl.setAttribute('camera', 'active', true);
-    this.configureHeadGeometry();
   },
 
   /**
    * Create head geometry for spectator mode.
+   * Always created in case we want to toggle, but only visible during spectator mode.
    */
   configureHeadGeometry: function () {
     var cameraEl = this.cameraEl;
@@ -247,6 +250,7 @@ AFRAME.registerComponent('avatar-replayer', {
     headMesh = new THREE.Mesh();
     headMesh.geometry = new THREE.BoxBufferGeometry(0.3, 0.3, 0.2);
     headMesh.material = new THREE.MeshStandardMaterial({color: 'pink'});
+    headMesh.visible = this.data.spectatorMode;
 
     leftEyeMesh = new THREE.Mesh();
     leftEyeMesh.geometry = new THREE.SphereBufferGeometry(0.05);
