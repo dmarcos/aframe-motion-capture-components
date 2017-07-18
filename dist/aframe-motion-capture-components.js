@@ -42,7 +42,7 @@
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ (function(module, exports, __webpack_require__) {
 
 	if (typeof AFRAME === 'undefined') {
 	  throw new Error('Component attempted to register before AFRAME was available.');
@@ -52,16 +52,16 @@
 	__webpack_require__(1);
 	__webpack_require__(2);
 	__webpack_require__(3);
-	__webpack_require__(4);
 	__webpack_require__(5);
-
-	// Systems
 	__webpack_require__(6);
 
+	// Systems
+	__webpack_require__(7);
 
-/***/ },
+
+/***/ }),
 /* 1 */
-/***/ function(module, exports) {
+/***/ (function(module, exports) {
 
 	/* global AFRAME, THREE */
 
@@ -116,8 +116,23 @@
 	    var detail;
 	    if (!this.isRecording) { return; }
 
+	    // Filter out `target`, not serializable.
+	    if ('detail' in evt && 'state' in evt.detail && typeof evt.detail.state === 'object' &&
+	        'target' in evt.detail.state) {
+	      delete evt.detail.state.target;
+	    }
+
 	    detail = {};
 	    EVENTS[evt.type].props.forEach(function buildDetail (propName) {
+	      // Convert GamepadButton to normal JS object.
+	      if (propName === 'state') {
+	        var stateProp;
+	        detail.state = {};
+	        for (stateProp in evt.detail.state) {
+	          detail.state[stateProp] = evt.detail.state[stateProp];
+	        }
+	        return;
+	      }
 	      detail[propName] = evt.detail[propName];
 	    });
 
@@ -270,9 +285,9 @@
 	});
 
 
-/***/ },
+/***/ }),
 /* 2 */
-/***/ function(module, exports) {
+/***/ (function(module, exports) {
 
 	/* global THREE, AFRAME  */
 	AFRAME.registerComponent('motion-capture-replayer', {
@@ -386,6 +401,9 @@
 	    this.currentPoseTime = poses[0].timestamp;
 	  },
 
+	  /**
+	   * @param events {Array} - Array of events with timestamp, name, and detail.
+	   */
 	  startReplayingEvents: function (events) {
 	    var firstEvent;
 	    this.isReplaying = true;
@@ -416,10 +434,11 @@
 	    currentEvent = playingEvents && playingEvents[this.currentEventIndex];
 	    this.currentPoseTime += delta;
 	    this.currentEventTime += delta;
-	    // determine next pose
+	    // Determine next pose.
+	    // Comparing currentPoseTime to currentEvent.timestamp is not a typo.
 	    while ((currentPose && this.currentPoseTime >= currentPose.timestamp) ||
 	           (currentEvent && this.currentPoseTime >= currentEvent.timestamp)) {
-	      // pose
+	      // Pose.
 	      if (currentPose && this.currentPoseTime >= currentPose.timestamp) {
 	        if (this.currentPoseIndex === playingPoses.length - 1) {
 	          if (this.data.loop) {
@@ -433,7 +452,7 @@
 	        this.currentPoseIndex += 1;
 	        currentPose = playingPoses[this.currentPoseIndex];
 	      }
-	      // event
+	      // Event.
 	      if (currentEvent && this.currentPoseTime >= currentEvent.timestamp) {
 	        if (this.currentEventIndex === playingEvents.length && this.data.loop) {
 	          this.currentEventIndex = 0;
@@ -464,15 +483,14 @@
 	};
 
 
-/***/ },
+/***/ }),
 /* 3 */
-/***/ function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
 
 	/* global THREE, AFRAME  */
+	var constants = __webpack_require__(4);
 	var log = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:info');
 	var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:warn');
-
-	var LOCALSTORAGE_KEY = 'avatar-recording';
 
 	/**
 	 * @member {object} recordingData - Where all the recording data is stored in memory.
@@ -481,10 +499,11 @@
 	  schema: {
 	    autoRecord: {default: false},
 	    autoPlay: {default: true},
+	    autoSaveFile: {default: true},
 	    spectatorPlay: {default: false},
 	    spectatorPosition: {default: '0 1.6 0', type: 'vec3'},
 	    localStorage: {default: true},
-	    saveFile: {default: true},
+	    recordingName: {default: constants.DEFAULT_RECORDING_NAME},
 	    loop: {default: true}
 	  },
 
@@ -497,9 +516,18 @@
 	  replayRecording: function () {
 	    var data = this.data;
 	    var el = this.el;
+	    var recordingData;
+	    var recordings;
 
-	    var recordingData = JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)) || this.recordingData;
+	    recordings = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS));
+	    if (recordings && recordings[data.recordingName]) {
+	      recordingData = recordings[data.recordingName];
+	    } else {
+	      recordingData = this.recordingData;
+	    }
+
 	    if (!recordingData) { return; }
+
 	    log('Replaying recording.');
 	    el.setAttribute('avatar-replayer', {
 	      loop: data.loop,
@@ -510,10 +538,10 @@
 	  },
 
 	  stopReplaying: function () {
-	    var avatarPlayer = this.el.components['avatar-replayer'];
-	    if (!avatarPlayer) { return; }
+	    var avatarReplayer = this.el.components['avatar-replayer'];
+	    if (!avatarReplayer || !avatarReplayer.isReplaying) { return; }
 	    log('Stopped replaying.');
-	    avatarPlayer.stopReplaying();
+	    avatarReplayer.stopReplaying();
 	    this.el.setAttribute('avatar-replayer', 'spectatorMode', false);
 	  },
 
@@ -578,9 +606,7 @@
 
 	      // c: Clear localStorage.
 	      case KEYS.c: {
-	        log('Recording cleared from localStorage.');
-	        this.recordingData = null;
-	        localStorage.removeItem(LOCALSTORAGE_KEY);
+	        this.clearRecordings();
 	        break;
 	      }
 
@@ -590,6 +616,12 @@
 	        break;
 	      }
 	    }
+	  },
+
+	  clearRecordings: function () {
+	    log('Recordings cleared from localStorage.');
+	    this.recordingData = null;
+	    localStorage.removeItem(constants.LOCALSTORAGE_RECORDINGS);
 	  },
 
 	  toggleReplaying: function () {
@@ -614,41 +646,52 @@
 	    }
 	  },
 
-	  setupCamera: function () {
+	  setupCamera: function (doneCb) {
 	    var el = this.el;
 	    var self = this;
-	    var setup;
+
 	    // Grab camera.
 	    if (el.camera && el.camera.el) {
 	      prepareCamera(el.camera.el);
 	      return;
 	    }
+
 	    el.addEventListener('camera-set-active', setup)
-	    setup = function (evt) { prepareCamera(evt.detail.cameraEl); };
+
+	    function setup (evt) {
+	      prepareCamera(evt.detail.cameraEl);
+	    };
 
 	    function prepareCamera (cameraEl) {
-	      if (self.cameraEl) { self.cameraEl.removeAttribute('motion-capture-recorder'); }
+	      if (self.cameraEl) {
+	        self.cameraEl.removeAttribute('motion-capture-recorder');
+	      }
 	      self.cameraEl = cameraEl;
-	      self.cameraEl.setAttribute('motion-capture-recorder', {
+	      cameraEl.setAttribute('motion-capture-recorder', {
 	        autoRecord: false,
 	        visibleStroke: false
 	      });
 	      el.removeEventListener('camera-set-active', setup);
+	      doneCb(cameraEl)
 	    }
 	  },
 
 	  startRecording: function () {
 	    var trackedControllerEls = this.trackedControllerEls;
 	    var keys;
+	    var self = this;
+
 	    if (this.isRecording) { return; }
+
 	    keys = Object.keys(trackedControllerEls);
 	    log('Starting recording!');
 	    this.stopReplaying();
-	    this.setupCamera();
-	    this.isRecording = true;
-	    this.cameraEl.components['motion-capture-recorder'].startRecording();
-	    keys.forEach(function (id) {
-	      trackedControllerEls[id].components['motion-capture-recorder'].startRecording();
+	    this.setupCamera(function cameraSetUp () {
+	      self.isRecording = true;
+	      self.cameraEl.components['motion-capture-recorder'].startRecording();
+	      keys.forEach(function startRecordingControllers (id) {
+	        trackedControllerEls[id].components['motion-capture-recorder'].startRecording();
+	      });
 	    });
 	  },
 
@@ -681,41 +724,70 @@
 	  },
 
 	  saveRecording: function () {
-	    var data = this.getJSONData()
+	    var recordingData = this.getJSONData()
 	    if (this.data.localStorage) {
 	      log('Recording saved to localStorage.');
-	      this.saveToLocalStorage(data);
+	      this.saveToLocalStorage(recordingData);
 	    }
-	    if (this.data.saveFile) {
+	    if (this.data.autoSaveFile) {
 	      log('Recording saved to file.');
-	      this.saveRecordingFile(data);
+	      this.saveRecordingFile(recordingData);
 	    }
 	  },
 
-	  saveToLocalStorage: function (data) {
-	    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(data));
+	  saveToLocalStorage: function (recordingData) {
+	    var data = this.data;
+	    var recordings;
+	    recordings = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)) || {};
+	    recordings[data.recordingName] = recordingData;
+	    localStorage.setItem(constants.LOCALSTORAGE_RECORDINGS, JSON.stringify(recordings));
 	  },
 
-	  saveRecordingFile: function (data) {
-	    var jsonData = JSON.stringify(data);
-	    var type = this.data.binaryFormat ? 'application/octet-binary' : 'application/json';
-	    var blob = new Blob([jsonData], {type: type});
-	    var url = URL.createObjectURL(blob);
-	    var fileName = 'recording-' + document.title.toLowerCase().replace(/ /g, '-') + '.json';
-	    var aEl = document.createElement('a');
+	  /**
+	   * Download recording.
+	   *
+	   * @param dataOrName - Recording data or name of recording to fetch from localStorage.
+	   */
+	  saveRecordingFile: function (dataOrName) {
+	    var aEl;
+	    var blob;
+	    var fileName;
+	    var jsonData;
+	    var url;
+
+	    // Get data.
+	    if (typeof dataOrName === 'object') {
+	      jsonData = JSON.stringify(dataOrName);
+	    } else {
+	      jsonData = localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)[dataOrName];
+	    }
+
+	    // Compose data blob.
+	    blob = new Blob([jsonData], {
+	      type: this.data.binaryFormat ? 'application/octet-binary' : 'application/json'
+	    });
+	    url = URL.createObjectURL(blob);
+
+	    // Create filename.
+	    fileName = 'recording-' + document.title.toLowerCase().replace(/ /g, '-') + '.json';
+
+	    // Create download link.
+	    aEl = document.createElement('a');
 	    aEl.href = url;
 	    aEl.setAttribute('download', fileName);
-	    aEl.innerHTML = 'downloading...';
+	    aEl.innerHTML = 'Downloading...';
 	    aEl.style.display = 'none';
+
+	    // Click download link.
 	    document.body.appendChild(aEl);
 	    setTimeout(function () {
 	      aEl.click();
 	      document.body.removeChild(aEl);
-	    }, 1);
+	    });
 	  },
 
 	  /**
-	   * Upload recording to file.io.
+	   * Upload recording to myjson.com.
 	   */
 	  uploadRecording: function () {
 	    var request;
@@ -751,21 +823,33 @@
 	});
 
 
-/***/ },
+/***/ }),
 /* 4 */
-/***/ function(module, exports) {
+/***/ (function(module, exports) {
+
+	module.exports.LOCALSTORAGE_RECORDINGS = 'avatarRecordings';
+	module.exports.DEFAULT_RECORDING_NAME = 'default';
+
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
 
 	/* global THREE, AFRAME  */
+	var constants = __webpack_require__(4);
 	var error = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:error');
 	var log = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:info');
 	var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:warn');
 
 	AFRAME.registerComponent('avatar-replayer', {
 	  schema: {
-	    src: {default: ''},
+	    autoPlay: {default: true},
+	    cameraOverride: {type: 'selector'},
 	    loop: {default: false},
+	    recordingName: {default: constants.DEFAULT_RECORDING_NAME},
 	    spectatorMode: {default: false},
-	    spectatorPosition: {default: '0 1.6 2', type: 'vec3'}
+	    spectatorPosition: {default: {x: 0, y: 1.6, z: 2}, type: 'vec3'},
+	    src: {default: ''}
 	  },
 
 	  init: function () {
@@ -781,19 +865,21 @@
 	    this.onKeyDown = this.onKeyDown.bind(this);
 	  },
 
-	  remove: function () {
-	    this.stopReplaying();
-	  },
+	  update: function (oldData) {
+	    var data = this.data;
 
-	  restoreCamera: function() {
-	    this.currentCameraEl.setAttribute('camera', 'active', true);
-	  },
+	    if ('spectatorMode' in oldData && oldData.spectatorMode !== data.spectatorMode) {
+	      if (data.spectatorMode) {
+	        this.activateSpectatorCamera();
+	      } else {
+	        this.deactivateSpectatorCamera();
+	      }
+	    }
 
-	  setupCameras: function () {
-	    this.currentCameraEl = this.el.camera.el;
-	    this.currentCameraEl.removeAttribute('data-aframe-default-camera');
-	    this.el.removeEventListener('camera-set-active', this.setupCameras);
-	    this.initSpectatorCamera();
+	    if (oldData.src !== data.src && data.autoPlay) {
+	      this.replayRecordingFromSource(oldData);
+	      this.activateSpectatorCamera();
+	    }
 	  },
 
 	  play: function () {
@@ -804,44 +890,97 @@
 	    window.removeEventListener('keydown', this.onKeyDown);
 	  },
 
+	  remove: function () {
+	    this.stopReplaying();
+	    this.cameraEl.removeObject3D('replayerMesh');
+	  },
+
+	  restoreCamera: function() {
+	    if (this.data.spectatorMode) {
+	      this.cameraEl.setAttribute('camera', 'active', true);
+	    }
+	  },
+
+	  setupCameras: function () {
+	    var data = this.data;
+	    var sceneEl = this.el;
+	    if (data.cameraOverride) {
+	      this.cameraEl = data.cameraOverride;
+	    } else {
+	      this.cameraEl = sceneEl.camera.el;
+	      this.cameraEl.removeAttribute('data-aframe-default-camera');
+	    }
+	    this.el.removeEventListener('camera-set-active', this.setupCameras);
+	    this.initSpectatorCamera();
+	    this.configureHeadGeometry();
+	  },
+
 	  /**
 	   * tab = toggle spectator camera
 	   */
 	  onKeyDown: function (evt) {
 	    var key = evt.keyCode;
-	    if (key !== 9) { return; }
 	    switch (key) {
-	      case 9: {
-	        this.toggleSpectatorCamera();
+	      // q.
+	      case 81: {
+	        this.el.setAttribute('avatar-replayer', 'spectatorMode', !this.data.spectatorMode);
 	        break;
 	      }
 	    }
 	  },
 
-	  toggleSpectatorCamera: function () {
-	    this.el.setAttribute('avatar-replayer', 'spectatorMode', !this.data.spectatorMode);
+	  activateSpectatorCamera: function () {
+	    var spectatorCameraEl = this.spectatorCameraEl;
+
+	    if (!spectatorCameraEl) {
+	      this.el.sceneEl.addEventListener('camera-set-active',
+	                                       this.activateSpectatorCamera.bind(this));
+	      return;
+	    }
+
+	    if (!spectatorCameraEl.hasLoaded) {
+	      spectatorCameraEl.addEventListener('loaded', this.activateSpectatorCamera.bind(this));
+	      return;
+	    }
+
+	    log('Activating spectator camera');
+	    spectatorCameraEl.setAttribute('camera', 'active', true);
+	    this.cameraEl.getObject3D('replayerMesh').visible = true;
 	  },
 
-	  update: function (oldData) {
-	    var data = this.data;
-	    if (oldData.src === data.src) { return; }
-	    this.replayRecordingFromSource(oldData);
+	  deactivateSpectatorCamera: function () {
+	    log('Deactivating spectator camera');
+	    this.cameraEl.setAttribute('camera', 'active', true);
+	    this.cameraEl.getObject3D('replayerMesh').visible = false;
 	  },
 
+	  /**
+	   * Create and activate spectator camera if in spectator mode.
+	   */
 	  initSpectatorCamera: function () {
-	    var spectatorCameraEl = this.spectatorCameraEl =
-	      this.el.querySelector('#spectatorCamera') || document.createElement('a-entity');
-	    var spectatorCameraRigEl = this.spectatorCameraRigEl =
-	      this.el.querySelector('#spectatorCameraRig') || document.createElement('a-entity');
-	    if (this.el.querySelector('#spectatorCameraRig')
-	        || !this.data.spectatorMode) { return; }
+	    var data = this.data;
+	    var sceneEl = this.el;
+	    var spectatorCameraEl;
+	    var spectatorCameraRigEl;
+
+	    if (this.el.querySelector('#spectatorCameraRig')) {
+	      this.spectatorCameraEl = this.el.querySelector('#spectatorCameraRig');
+	      return;
+	    }
+
+	    spectatorCameraEl = this.spectatorCameraEl =
+	      sceneEl.querySelector('#spectatorCamera') || document.createElement('a-entity');
+	    spectatorCameraRigEl = this.spectatorCameraRigEl =
+	      sceneEl.querySelector('#spectatorCameraRig') || document.createElement('a-entity');
+	    spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
+
 	    spectatorCameraEl.id = 'spectatorCamera';
 	    spectatorCameraRigEl.id = 'spectatorCameraRig';
-	    spectatorCameraEl.setAttribute('camera', '');
+	    spectatorCameraEl.setAttribute('camera', {active: data.spectatorMode, userHeight: 0});
 	    spectatorCameraEl.setAttribute('look-controls', '');
-	    spectatorCameraEl.setAttribute('wasd-controls', '');
+	    spectatorCameraEl.setAttribute('wasd-controls', {fly: true});
 	    spectatorCameraRigEl.appendChild(spectatorCameraEl);
-	    this.el.appendChild(this.spectatorCameraRigEl);
+	    sceneEl.appendChild(spectatorCameraRigEl);
 	  },
 
 	  /**
@@ -858,26 +997,35 @@
 	      return;
 	    }
 
-	    // From localStorage.
-	    localStorageData = JSON.parse(localStorage.getItem('avatar-recording'));
-	    if (localStorageData) {
-	      log('Replaying from localStorage.');
-	      this.startReplaying(localStorageData);
+	    queryParamSrc = this.getSrcFromSearchParam();
+
+	    // 1. Try `avatar-recorder` query parameter as recording name from localStorage.
+	    localStorageData = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)) || {};
+	    // Try to search `avatar-recorder` query parameter argument in localStorage.
+	    if (localStorageData[queryParamSrc]) {
+	      log('Replaying `' + queryParamSrc + '` from localStorage.');
+	      this.startReplaying(localStorageData[queryParamSrc]);
 	      return;
 	    }
 
-	    // From file.
-	    queryParamSrc = this.getSrcFromSearchParam();
-	    src = data.src || queryParamSrc;
-	    if (!src || oldSrc === data.src) { return; }
-
-	    if (data.src) {
-	      log('Replaying from component `src`', src);
-	    } else if (queryParamSrc) {
-	      log('Replaying from query parameter `avatar-recording`', src);
+	    // 2. Use `avatar-recorder` query parameter or `data.src` as URL
+	    // From external file.
+	    src = queryParamSrc || data.src;
+	    if (src) {
+	      if (data.src) {
+	        log('Replaying from component `src`', src);
+	      } else if (queryParamSrc) {
+	        log('Replaying from query parameter `avatar-recording`', src);
+	      }
+	      this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+	      return;
 	    }
 
-	    this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+	    // 3. Use `data.recordingName` as recording name from localStorage.
+	    if (localStorageData[data.recordingName]) {
+	      log('Replaying `' + data.recordingName + '` from localStorage.');
+	      this.startReplaying(localStorageData[data.recordingName]);
+	    }
 	  },
 
 	  /**
@@ -899,7 +1047,6 @@
 	  startReplaying: function (replayData) {
 	    var data = this.data;
 	    var self = this;
-	    var puppetEl = this.puppetEl;
 	    var sceneEl = this.el;
 
 	    if (this.isReplaying) { return; }
@@ -915,14 +1062,15 @@
 	    this.replayData = replayData;
 	    this.isReplaying = true;
 
-	    if (puppetEl) { puppetEl.removeAttribute('motion-capture-replayer'); }
+	    this.cameraEl.removeAttribute('motion-capture-replayer');
+
 	    Object.keys(replayData).forEach(function setPlayer (key) {
 	      var puppetEl;
 
 	      if (key === 'camera') {
 	        // Grab camera.
 	        log('Setting motion-capture-replayer on camera.');
-	        puppetEl = self.puppetEl = self.data.spectatorMode ? self.currentCameraEl : sceneEl.camera.el;
+	        puppetEl = self.cameraEl;
 	      } else {
 	        // Grab other entities.
 	        log('Setting motion-capture-replayer on ' + key + '.');
@@ -937,46 +1085,71 @@
 	      puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
 	      puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
 	    });
-	    this.configureCamera();
 	  },
 
-	  configureCamera: function () {
-	    var data = this.data;
-	    var currentCameraEl = this.currentCameraEl;
-	    var spectatorCameraEl = this.spectatorCameraEl;
-	    if (!spectatorCameraEl.hasLoaded) {
-	      spectatorCameraEl.addEventListener('loaded', this.configureCamera.bind(this));
-	      return;
-	    }
-	    if (data.spectatorMode) {
-	      this.spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
-	      spectatorCameraEl.setAttribute('camera', 'active', true);
-	    } else {
-	      currentCameraEl.setAttribute('camera', 'active', true);
-	    }
-	    this.configureHeadGeometry();
-	  },
+	  /**
+	   * Create head geometry for spectator mode.
+	   * Always created in case we want to toggle, but only visible during spectator mode.
+	   */
+	  configureHeadGeometry: function () {
+	    var cameraEl = this.cameraEl;
+	    var headMesh;
+	    var leftEyeMesh;
+	    var rightEyeMesh;
+	    var leftEyeBallMesh;
+	    var rightEyeBallMesh;
 
-	  configureHeadGeometry: function() {
-	    var currentCameraEl = this.currentCameraEl;
-	    if (currentCameraEl.getObject3D('mesh')) { return; }
-	    if (!this.data.spectatorMode) { return; }
-	    currentCameraEl.setAttribute('geometry', {primitive: 'box', height: 0.3, width: 0.3, depth: 0.2});
-	    currentCameraEl.setAttribute('material', {color: 'pink'});
+	    if (cameraEl.getObject3D('mesh')) { return; }
+
+	    headMesh = new THREE.Mesh();
+	    headMesh.geometry = new THREE.BoxBufferGeometry(0.3, 0.3, 0.2);
+	    headMesh.material = new THREE.MeshStandardMaterial({color: 'pink'});
+	    headMesh.visible = this.data.spectatorMode;
+
+	    leftEyeMesh = new THREE.Mesh();
+	    leftEyeMesh.geometry = new THREE.SphereBufferGeometry(0.05);
+	    leftEyeMesh.material = new THREE.MeshBasicMaterial({color: 'white'});
+	    leftEyeMesh.position.x -= 0.1;
+	    leftEyeMesh.position.y += 0.1;
+	    leftEyeMesh.position.z -= 0.1;
+	    leftEyeBallMesh = new THREE.Mesh();
+	    leftEyeBallMesh.geometry = new THREE.SphereBufferGeometry(0.025);
+	    leftEyeBallMesh.material = new THREE.MeshBasicMaterial({color: 'black'});
+	    leftEyeBallMesh.position.z -= 0.04;
+	    leftEyeMesh.add(leftEyeBallMesh);
+	    headMesh.add(leftEyeMesh);
+
+	    rightEyeMesh = new THREE.Mesh();
+	    rightEyeMesh.geometry = new THREE.SphereBufferGeometry(0.05);
+	    rightEyeMesh.material = new THREE.MeshBasicMaterial({color: 'white'});
+	    rightEyeMesh.position.x += 0.1;
+	    rightEyeMesh.position.y += 0.1;
+	    rightEyeMesh.position.z -= 0.1;
+	    rightEyeBallMesh = new THREE.Mesh();
+	    rightEyeBallMesh.geometry = new THREE.SphereBufferGeometry(0.025);
+	    rightEyeBallMesh.material = new THREE.MeshBasicMaterial({color: 'black'});
+	    rightEyeBallMesh.position.z -= 0.04;
+	    rightEyeMesh.add(rightEyeBallMesh);
+	    headMesh.add(rightEyeMesh);
+
+	    cameraEl.setObject3D('replayerMesh', headMesh);
 	  },
 
 	  stopReplaying: function () {
-	    var keys;
 	    var self = this;
+
 	    if (!this.isReplaying || !this.replayData) { return; }
+
 	    this.isReplaying = false;
-	    keys = Object.keys(this.replayData);
-	    keys.forEach(function (key) {
+	    Object.keys(this.replayData).forEach(function removeReplayers (key) {
 	      if (key === 'camera') {
-	        self.puppetEl.removeComponent('motion-capture-replayer');
+	        self.cameraEl.removeComponent('motion-capture-replayer');
 	      } else {
 	        el = document.querySelector('#' + key);
-	        if (!el) { warn('No element with id ' + key); }
+	        if (!el) {
+	          warn('No element with id ' + key);
+	          return;
+	        }
 	        el.removeComponent('motion-capture-replayer');
 	      }
 	    });
@@ -1000,9 +1173,9 @@
 	});
 
 
-/***/ },
-/* 5 */
-/***/ function(module, exports) {
+/***/ }),
+/* 6 */
+/***/ (function(module, exports) {
 
 	/* global THREE AFRAME  */
 	AFRAME.registerComponent('stroke', {
@@ -1185,9 +1358,9 @@
 	});
 
 
-/***/ },
-/* 6 */
-/***/ function(module, exports) {
+/***/ }),
+/* 7 */
+/***/ (function(module, exports) {
 
 	AFRAME.registerSystem('motion-capture-replayer', {
 	  init: function () {
@@ -1223,5 +1396,5 @@
 	  }
 	});
 
-/***/ }
+/***/ })
 /******/ ]);

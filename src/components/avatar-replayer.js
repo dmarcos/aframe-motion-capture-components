@@ -95,6 +95,12 @@ AFRAME.registerComponent('avatar-replayer', {
   activateSpectatorCamera: function () {
     var spectatorCameraEl = this.spectatorCameraEl;
 
+    if (!spectatorCameraEl) {
+      this.el.sceneEl.addEventListener('camera-set-active',
+                                       this.activateSpectatorCamera.bind(this));
+      return;
+    }
+
     if (!spectatorCameraEl.hasLoaded) {
       spectatorCameraEl.addEventListener('loaded', this.activateSpectatorCamera.bind(this));
       return;
@@ -120,7 +126,10 @@ AFRAME.registerComponent('avatar-replayer', {
     var spectatorCameraEl;
     var spectatorCameraRigEl;
 
-    if (this.el.querySelector('#spectatorCameraRig')) { return; }
+    if (this.el.querySelector('#spectatorCameraRig')) {
+      this.spectatorCameraEl = this.el.querySelector('#spectatorCameraRig');
+      return;
+    }
 
     spectatorCameraEl = this.spectatorCameraEl =
       sceneEl.querySelector('#spectatorCamera') || document.createElement('a-entity');
@@ -151,27 +160,35 @@ AFRAME.registerComponent('avatar-replayer', {
       return;
     }
 
-    // From localStorage if recordingName specified and data exists.
-    if (data.recordingName) {
-      localStorageData = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)) || {};
-      localStorageData = localStorageData[data.recordingName];
-      if (localStorageData) {
-        log('Replaying from localStorage.');
-        this.startReplaying(localStorageData);
-        return;
-      }
+    queryParamSrc = this.getSrcFromSearchParam();
+
+    // 1. Try `avatar-recorder` query parameter as recording name from localStorage.
+    localStorageData = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)) || {};
+    // Try to search `avatar-recorder` query parameter argument in localStorage.
+    if (localStorageData[queryParamSrc]) {
+      log('Replaying `' + queryParamSrc + '` from localStorage.');
+      this.startReplaying(localStorageData[queryParamSrc]);
+      return;
     }
 
+    // 2. Use `avatar-recorder` query parameter or `data.src` as URL
     // From external file.
-    queryParamSrc = this.getSrcFromSearchParam();
-    src = data.src || queryParamSrc;
-    if (!src || oldSrc === data.src) { return; }
-    if (data.src) {
-      log('Replaying from component `src`', src);
-    } else if (queryParamSrc) {
-      log('Replaying from query parameter `avatar-recording`', src);
+    src = queryParamSrc || data.src;
+    if (src) {
+      if (data.src) {
+        log('Replaying from component `src`', src);
+      } else if (queryParamSrc) {
+        log('Replaying from query parameter `avatar-recording`', src);
+      }
+      this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+      return;
     }
-    this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+
+    // 3. Use `data.recordingName` as recording name from localStorage.
+    if (localStorageData[data.recordingName]) {
+      log('Replaying `' + data.recordingName + '` from localStorage.');
+      this.startReplaying(localStorageData[data.recordingName]);
+    }
   },
 
   /**
