@@ -9,7 +9,7 @@ recordKeyEvent.keyCode = 32;
 const clearKeyEvent = new Event('keydown');
 clearKeyEvent.keyCode = 67;
 
-var LOCALSTORAGE_KEY = 'avatar-recording';
+var LOCALSTORAGE_KEY = 'avatarRecordings';
 
 suite('avatar-recorder', function () {
   var component;
@@ -113,7 +113,7 @@ suite('avatar-recorder', function () {
       component.isRecording = true;
       component.stopRecording();
       assert.shallowDeepEqual(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)),
-                              component.recordingData);
+                              {default: component.recordingData});
       done();
     });
   });
@@ -177,8 +177,9 @@ suite('avatar-recorder (replay from localStorage)', function () {
       }));
       setTimeout(() => {
         var component;
-        sceneEl.setAttribute('avatar-recorder', 'autoPlay: true');
+        sceneEl.setAttribute('avatar-recorder', {autoPlay: true});
         component = sceneEl.components['avatar-recorder'];
+        localStorage.setItem('avatarRecordings', JSON.stringify({default: {}}));
         component.replayRecording();  // Just call now to bypass the 500ms setTimeout on play.
         assert.ok(sceneEl.components['avatar-replayer'], 'Replayer is set');
         assert.ok(sceneEl.components['avatar-replayer'].isReplaying);
@@ -187,8 +188,8 @@ suite('avatar-recorder (replay from localStorage)', function () {
     });
   });
 
-  test('autoPlays from localStorage with replayer set', function () {
-    sceneEl.setAttribute('avatar-replayer', 'autoPlay: true');
+  test.only('autoPlays from localStorage with replayer set', function () {
+    sceneEl.setAttribute('avatar-replayer', {autoPlay: true});
     const startReplayingSpy = this.sinon.spy(sceneEl.components['avatar-replayer'],
                                              'startReplaying');
 
@@ -196,7 +197,8 @@ suite('avatar-recorder (replay from localStorage)', function () {
       camera: {poses: [{timestamp: 0}], events: []},
     }));
 
-    sceneEl.setAttribute('avatar-recorder', 'autoPlay: true');
+    sceneEl.setAttribute('avatar-recorder', {autoPlay: true});
+    localStorage.setItem('avatarRecordings', JSON.stringify({default: {}}));
     sceneEl.components['avatar-recorder'].replayRecording();  // Call now to bypass 500ms TO.
     assert.ok(startReplayingSpy.called);
     assert.ok(startReplayingSpy.getCalls()[0].args[0].camera.poses);
