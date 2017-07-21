@@ -96,8 +96,10 @@ AFRAME.registerComponent('avatar-recorder', {
       prepareCamera(el.camera.el);
       return;
     }
+
     el.addEventListener('camera-set-active', function setup (evt) {
       prepareCamera(evt.detail.cameraEl);
+      el.removeEventListener('camera-set-active', setup);
     });
 
     function prepareCamera (cameraEl) {
@@ -109,7 +111,6 @@ AFRAME.registerComponent('avatar-recorder', {
         autoRecord: false,
         visibleStroke: false
       });
-      el.removeEventListener('camera-set-active', setup);
       doneCb(cameraEl)
     }
   },
@@ -124,7 +125,10 @@ AFRAME.registerComponent('avatar-recorder', {
     if (this.isRecording) { return; }
 
     log('Starting recording!');
-    this.stopReplaying();
+
+    if (this.el.components['avatar-replayer']) {
+      this.el.components['avatar-replayer'].stopReplaying();
+    }
 
     // Get camera.
     this.setupCamera(function cameraSetUp () {
@@ -153,8 +157,8 @@ AFRAME.registerComponent('avatar-recorder', {
     Object.keys(trackedControllerEls).forEach(function (id) {
       trackedControllerEls[id].components['motion-capture-recorder'].stopRecording();
     });
-    this.storeRecording();
     this.recordingData = this.getJSONData();
+    this.storeRecording(this.recordingData);
 
     if (this.data.autoPlay) {
       this.replayRecording();
@@ -186,10 +190,10 @@ AFRAME.registerComponent('avatar-recorder', {
   /**
    * Store recording in IndexedDB using recordingdb system.
    */
-  storeRecording: function () {
+  storeRecording: function (recordingData) {
     var data = this.data;
     if (!data.localStorage) { return; }
     log('Recording stored in localStorage.');
-    this.el.systems.recordingdb.db.addRecording(data.recordingName, this.recordingData);
+    this.el.systems.recordingdb.addRecording(data.recordingName, recordingData);
   }
 });

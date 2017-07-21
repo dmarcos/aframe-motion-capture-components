@@ -25,35 +25,33 @@ AFRAME.registerSystem('recordingdb', {
       var db = self.db = evt.target.result;
       var objectStore;
 
-      objectStore = db.createObjectStore('recordings', {keyPath: 'name'});
-      objectStore.createIndex('name', 'name', {unique: true});
+      // Create object store.
+      objectStore = db.createObjectStore('recordings', {keyPath: 'recordingName'});
+      objectStore.createIndex('recordingName', 'recordingName', {unique: true});
       self.objectStore = objectStore;
     };
 
     // Got database.
     request.onsuccess = function (evt) {
-      var db = self.db = evt.target.result;
-      var transaction;
-      transaction = db.transaction([OBJECT_STORE_NAME], 'readwrite');
-      self.objectStore = transaction.objectStore(OBJECT_STORE_NAME);
-      self.sceneEl.emit('recordingdbinitialized', {objectStore: self.objectStore});
+      self.db = evt.target.result;
+      self.sceneEl.emit('recordingdbinitialized');
     };
+  },
+
+  /**
+   * Need a new transaction for everything.
+   */
+  getTransaction: function () {
+    var transaction = this.db.transaction([OBJECT_STORE_NAME], 'readwrite');
+    return transaction.objectStore(OBJECT_STORE_NAME);
   },
 
   getRecordingNames: function () {
     var self = this;
 
     return new Promise(function (resolve) {
-      if (!self.objectStore) {
-        self.sceneEl.addEventListener('recordingdbinitialized', function (evt) {
-          getRecordingNames();
-        });
-        return;
-      }
-      geRecordingNames();
-
-      function getRecordingNames () {
-        self.objectStore.openCursor().onsuccess = function (evt) {
+      self.waitForDb(function () {
+        self.getTransaction().openCursor().onsuccess = function (evt) {
           var cursor = evt.target.result;
           var recordingNames
 
@@ -69,57 +67,57 @@ AFRAME.registerSystem('recordingdb', {
           }
           resolve(recordingNames.sort());
         };
-      }
+      });
     });
   },
 
   getRecordings: function (cb) {
-    var objectStore = this.objectStore;
     var self = this;
 
     return new Promise(function getRecordings (resolve) {
-      if (!objectStore) {
-        self.sceneEl.addEventListener('recordingdbinitialized', function () {
-          getRecordings(resolve);
-        });
-        return;
-      }
-
-      objectStore.openCursor().onsuccess = function (evt) {
-        var cursor = evt.target.result;
-        var recordings = [cursor.value];
-        while (cursor.continue()) {
-          recordings.push(cursor.value);
-        }
-        resolve(recordings);
-      };
+      self.waitForDb(function () {
+        self.getTransaction().openCursor().onsuccess = function (evt) {
+          var cursor = evt.target.result;
+          var recordings = [cursor.value];
+          while (cursor.continue()) {
+            recordings.push(cursor.value);
+          }
+          resolve(recordings);
+        };
+      });
     });
   },
 
   getRecording: function (name) {
-    var objectStore = this.objectStore;
     var self = this;
 
     return new Promise(function getRecording (resolve) {
-      if (!objectStore) {
-        self.sceneEl.addEventListener('recordingdbinitialized', function () {
-          getRecording(resolve);
-        });
-        return;
-      }
-
-      objectStore.get(name).onsuccess = function (evt) {
-        resolve(evt.target.result);
-      };
+      self.waitForDb(function () {
+        self.getTransaction().get(name).onsuccess = function (evt) {
+          delete evt.target.result.recordingName;
+          resolve(evt.target.result);
+        };
+      });
     });
   },
 
   addRecording: function (name, data) {
-    data.name = name;
-    this.objectStore.put(data);
+    data.recordingName = name;
+    this.getTransaction().put(data);
   },
 
   deleteRecording: function (name) {
-    this.objectStore.delete(name);
+    this.getTransaction().delete(name);
+  },
+
+  /**
+   * Helper to wait for store to be initialized before using it.
+   */
+  waitForDb: function (cb) {
+    if (this.db) {
+      cb();
+      return;
+    }
+    this.sceneEl.addEventListener('recordingdbinitialized', cb);
   }
 });

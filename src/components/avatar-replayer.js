@@ -89,6 +89,8 @@ AFRAME.registerComponent('avatar-replayer', {
     } else {
       // Default camera.
       this.cameraEl = sceneEl.camera.el;
+      // Make sure A-Frame doesn't automatically remove this camera.
+      this.cameraEl.removeAttribute('data-aframe-default-camera');
     }
 
     sceneEl.removeEventListener('camera-set-active', this.setupCamera);
@@ -175,6 +177,7 @@ AFRAME.registerComponent('avatar-replayer', {
    */
   replayRecordingFromSource: function () {
     var data = this.data;
+    var recordingdb = this.el.systems.recordingdb;;
     var recordingNames;
     var src;
     var self = this;
@@ -184,14 +187,14 @@ AFRAME.registerComponent('avatar-replayer', {
       return;
     }
 
-    this.el.systems.recordingdb.getRecordingNames().then(function (recordingNames) {
+    recordingdb.getRecordingNames().then(function (recordingNames) {
       // See if recording defined in query parameter.
       var queryParamSrc = self.getSrcFromSearchParam();
 
       // 1. Try `avatar-recorder` query parameter as recording name from IndexedDB.
       if (recordingNames.indexOf(queryParamSrc) !== -1) {
         log('Replaying `' + queryParamSrc + '` from IndexedDB.');
-        getRecording(queryParamSrc).then(self.startReplaying);
+        recordingdb.getRecording(queryParamSrc).then(bind(self.startReplaying, self));
         return;
       }
 
@@ -208,9 +211,10 @@ AFRAME.registerComponent('avatar-replayer', {
       }
 
       // 3. Use `data.recordingName` as recording name from IndexedDB.
+      console.log(recordingNames, data.recordingName);
       if (recordingNames.indexOf(data.recordingName) !== -1) {
         log('Replaying `' + data.recordingName + '` from IndexedDB.');
-        getRecording(data.recordingName).then(self.startReplaying);
+        recordingdb.getRecording(data.recordingName).then(bind(self.startReplaying, self));
       }
     });
   },
