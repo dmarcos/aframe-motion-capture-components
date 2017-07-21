@@ -50,22 +50,20 @@ AFRAME.registerSystem('recordingdb', {
     var self = this;
 
     return new Promise(function (resolve) {
+      var recordingNames = [];
+
       self.waitForDb(function () {
         self.getTransaction().openCursor().onsuccess = function (evt) {
           var cursor = evt.target.result;
-          var recordingNames
 
           // No recordings.
           if (!cursor) {
-            resolve([]);
+            resolve(recordingNames.sort());
             return;
           }
 
-          recordingNames = [cursor.value.name];
-          while (cursor.continue()) {
-            recordings.push(cursor.value.name);
-          }
-          resolve(recordingNames.sort());
+          recordingNames.push(cursor.value.recordingName);
+          cursor.continue();
         };
       });
     });
@@ -79,7 +77,7 @@ AFRAME.registerSystem('recordingdb', {
         self.getTransaction().openCursor().onsuccess = function (evt) {
           var cursor = evt.target.result;
           var recordings = [cursor.value];
-          while (cursor.continue()) {
+          while (cursor.ontinue()) {
             recordings.push(cursor.value);
           }
           resolve(recordings);
@@ -103,7 +101,7 @@ AFRAME.registerSystem('recordingdb', {
 
   addRecording: function (name, data) {
     data.recordingName = name;
-    this.getTransaction().put(data);
+    this.getTransaction().add(data);
   },
 
   deleteRecording: function (name) {

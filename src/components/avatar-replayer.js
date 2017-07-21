@@ -36,9 +36,6 @@ AFRAME.registerComponent('avatar-replayer', {
       sceneEl.addEventListener('camera-set-active', this.setupCamera);
     }
 
-    // Deactivate spectator camera when recording is finished replaying.
-    sceneEl.addEventListener('replayingstopped', bind(this.deactivateSpectatorCamera, this));
-
     if (this.data.autoPlay) {
       this.replayRecordingFromSource();
     }
@@ -211,7 +208,6 @@ AFRAME.registerComponent('avatar-replayer', {
       }
 
       // 3. Use `data.recordingName` as recording name from IndexedDB.
-      console.log(recordingNames, data.recordingName);
       if (recordingNames.indexOf(data.recordingName) !== -1) {
         log('Replaying `' + data.recordingName + '` from IndexedDB.');
         recordingdb.getRecording(data.recordingName).then(bind(self.startReplaying, self));
