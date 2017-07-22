@@ -755,9 +755,6 @@
 	    // Bind methods.
 	    this.onKeyDown = bind(this.onKeyDown, this);
 
-	    // Create spectator camera either if we are in spectator mode or toggling to it.
-	    this.initSpectatorCamera();
-
 	    // Prepare camera.
 	    this.setupCamera = bind(this.setupCamera, this);
 	    if (sceneEl.camera) {
@@ -774,11 +771,12 @@
 	  update: function (oldData) {
 	    var data = this.data;
 
-	    // Handle toggling spectator mode.
-	    if ('spectatorMode' in oldData && oldData.spectatorMode !== data.spectatorMode) {
+	    // Handle toggling spectator mode. Don't run on initialization. Want to activate after
+	    // the player camera is initialized.
+	    if (oldData.spectatorMode !== data.spectatorMode) {
 	      if (data.spectatorMode) {
 	        this.activateSpectatorCamera();
-	      } else {
+	      } else if (oldData.spectatorMode === true) {
 	        this.deactivateSpectatorCamera();
 	      }
 	    }
@@ -823,6 +821,9 @@
 	    sceneEl.removeEventListener('camera-set-active', this.setupCamera);
 
 	    this.configureHeadGeometry();
+
+	    // Create spectator camera for either if we are in spectator mode or toggling to it.
+	    this.initSpectatorCamera();
 	  },
 
 	  /**
@@ -843,6 +844,12 @@
 	   */
 	  activateSpectatorCamera: function () {
 	    var spectatorCameraEl = this.spectatorCameraEl;
+
+	    if (!spectatorCameraEl) {
+	      this.el.addEventListener('spectatorcameracreated',
+	                               bind(this.activateSpectatorCamera, this));
+	      return;
+	    }
 
 	    if (!spectatorCameraEl.hasLoaded) {
 	      spectatorCameraEl.addEventListener('loaded', bind(this.activateSpectatorCamera, this));
@@ -897,6 +904,7 @@
 	    // Append rig.
 	    spectatorCameraRigEl.appendChild(spectatorCameraEl);
 	    sceneEl.appendChild(spectatorCameraRigEl);
+	    sceneEl.emit('spectatorcameracreated');
 	  },
 
 	  /**
