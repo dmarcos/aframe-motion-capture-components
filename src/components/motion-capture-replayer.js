@@ -20,13 +20,30 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.discardedFrames = 0;
     this.playingEvents = [];
     this.playingPoses = [];
+    this.gamepadData = null;
   },
 
   remove: function () {
-    this.el.removeEventListener('pause', this.playComponent);
+    var el = this.el;
+    var gamepadData = this.gamepadData;
+    var gamepads;
+    var found = -1;
+
+    el.removeEventListener('pause', this.playComponent);
     this.stopReplaying();
-    this.el.pause();
-    this.el.play();
+    el.pause();
+    el.play();
+
+    // Remove gamepad from system.
+    if (this.gamepadData) {
+      gamepads = el.sceneEl.systems['motion-capture-replayer'].gamepads;
+      gamepads.forEach(function (gamepad, i) {
+        if (gamepad === gamepadData) { found = i; }
+      });
+      if (found !== -1) {
+        gamepads.splice(i, 1);
+      }
+    }
   },
 
   update: function (oldData) {
@@ -48,7 +65,8 @@ AFRAME.registerComponent('motion-capture-replayer', {
   },
 
   updateSrc: function (src) {
-    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(
+      src, false, this.startReplaying.bind(this));
   },
 
   onStrokeStarted: function(evt) {
@@ -68,17 +86,26 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.play();
   },
 
+  /**
+   * @param {object} data - Recording data.
+   */
   startReplaying: function (data) {
+    var el = this.el;
+
     this.ignoredFrames = 0;
     this.storeInitialPose();
     this.isReplaying = true;
     this.startReplayingPoses(data.poses);
     this.startReplayingEvents(data.events);
+
+    // Add gamepad metadata to system.
     if (data.gamepad) {
-      this.el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
-      this.el.emit('gamepadconnected');
+      this.gamepadData = data.gamepad;
+      el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
+      el.emit('gamepadconnected');
     }
-    this.el.emit('replayingstarted');
+
+    el.emit('replayingstarted');
   },
 
   stopReplaying: function () {
@@ -174,7 +201,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
     }
   },
 
-  tick:  function (time, delta) {
+  tick: function (time, delta) {
     // Ignore the first couple of frames that come from window.RAF on Firefox.
     if (this.ignoredFrames !== 2 && !window.debug) {
       this.ignoredFrames++;

@@ -241,8 +241,9 @@ AFRAME.registerComponent('avatar-replayer', {
 
     // Wait for camera.
     if (!this.el.camera) {
-      this.el.addEventListener('camera-set-active', function () {
+      this.el.addEventListener('camera-set-active', function waitForCamera () {
         self.startReplaying(replayData);
+        self.el.removeEventListener('camera-set-active', waitForCamera);
       });
       return;
     }
@@ -257,11 +258,9 @@ AFRAME.registerComponent('avatar-replayer', {
 
       if (key === 'camera') {
         // Grab camera.
-        log('Setting motion-capture-replayer on camera.');
         replayingEl = self.cameraEl;
       } else {
         // Grab other entities.
-        log('Setting motion-capture-replayer on ' + key + '.');
         replayingEl = sceneEl.querySelector('#' + key);
         if (!replayingEl) {
           error('No element found with ID ' + key + '.');

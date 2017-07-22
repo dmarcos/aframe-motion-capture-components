@@ -312,13 +312,30 @@
 	    this.discardedFrames = 0;
 	    this.playingEvents = [];
 	    this.playingPoses = [];
+	    this.gamepadData = null;
 	  },
 
 	  remove: function () {
-	    this.el.removeEventListener('pause', this.playComponent);
+	    var el = this.el;
+	    var gamepadData = this.gamepadData;
+	    var gamepads;
+	    var found = -1;
+
+	    el.removeEventListener('pause', this.playComponent);
 	    this.stopReplaying();
-	    this.el.pause();
-	    this.el.play();
+	    el.pause();
+	    el.play();
+
+	    // Remove gamepad from system.
+	    if (this.gamepadData) {
+	      gamepads = el.sceneEl.systems['motion-capture-replayer'].gamepads;
+	      gamepads.forEach(function (gamepad, i) {
+	        if (gamepad === gamepadData) { found = i; }
+	      });
+	      if (found !== -1) {
+	        gamepads.splice(i, 1);
+	      }
+	    }
 	  },
 
 	  update: function (oldData) {
@@ -340,7 +357,8 @@
 	  },
 
 	  updateSrc: function (src) {
-	    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+	    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(
+	      src, false, this.startReplaying.bind(this));
 	  },
 
 	  onStrokeStarted: function(evt) {
@@ -360,17 +378,26 @@
 	    this.play();
 	  },
 
+	  /**
+	   * @param {object} data - Recording data.
+	   */
 	  startReplaying: function (data) {
+	    var el = this.el;
+
 	    this.ignoredFrames = 0;
 	    this.storeInitialPose();
 	    this.isReplaying = true;
 	    this.startReplayingPoses(data.poses);
 	    this.startReplayingEvents(data.events);
+
+	    // Add gamepad metadata to system.
 	    if (data.gamepad) {
-	      this.el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
-	      this.el.emit('gamepadconnected');
+	      this.gamepadData = data.gamepad;
+	      el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
+	      el.emit('gamepadconnected');
 	    }
-	    this.el.emit('replayingstarted');
+
+	    el.emit('replayingstarted');
 	  },
 
 	  stopReplaying: function () {
@@ -466,7 +493,7 @@
 	    }
 	  },
 
-	  tick:  function (time, delta) {
+	  tick: function (time, delta) {
 	    // Ignore the first couple of frames that come from window.RAF on Firefox.
 	    if (this.ignoredFrames !== 2 && !window.debug) {
 	      this.ignoredFrames++;
@@ -944,8 +971,9 @@
 
 	    // Wait for camera.
 	    if (!this.el.camera) {
-	      this.el.addEventListener('camera-set-active', function () {
+	      this.el.addEventListener('camera-set-active', function waitForCamera () {
 	        self.startReplaying(replayData);
+	        self.el.removeEventListener('camera-set-active', waitForCamera);
 	      });
 	      return;
 	    }
@@ -960,11 +988,9 @@
 
 	      if (key === 'camera') {
 	        // Grab camera.
-	        log('Setting motion-capture-replayer on camera.');
 	        replayingEl = self.cameraEl;
 	      } else {
 	        // Grab other entities.
-	        log('Setting motion-capture-replayer on ' + key + '.');
 	        replayingEl = sceneEl.querySelector('#' + key);
 	        if (!replayingEl) {
 	          error('No element found with ID ' + key + '.');
@@ -1263,14 +1289,16 @@
 /* 7 */
 /***/ (function(module, exports) {
 
+	var bind = AFRAME.utils.bind;
+
 	AFRAME.registerSystem('motion-capture-replayer', {
 	  init: function () {
 	    var sceneEl = this.sceneEl;
 	    var trackedControlsSystem = sceneEl.systems['tracked-controls'];
 	    var trackedControlsTick = AFRAME.components['tracked-controls'].Component.prototype.tick;
 	    this.gamepads = [];
-	    this.updateControllerListOriginal = trackedControlsSystem.updateControllerList.bind(trackedControlsSystem);
-	    sceneEl.systems['tracked-controls'].updateControllerList = this.updateControllerList.bind(this);
+	    this.updateControllerListOriginal = bind(trackedControlsSystem.updateControllerList, trackedControlsSystem);
+	    sceneEl.systems['tracked-controls'].updateControllerList = bind(this.updateControllerList, this);
 	    AFRAME.components['tracked-controls'].Component.prototype.tick = this.trackedControlsTickWrapper;
 	    AFRAME.components['tracked-controls'].Component.prototype.trackedControlsTick = trackedControlsTick;
 	  },
@@ -1281,14 +1309,17 @@
 	  },
 
 	  updateControllerList: function () {
-	    var sceneEl = this.sceneEl;
 	    var i;
+	    var sceneEl = this.sceneEl;
 	    var trackedControlsSystem = sceneEl.systems['tracked-controls'];
+
 	    this.updateControllerListOriginal();
+
 	    this.gamepads.forEach(function (gamepad) {
 	      if (trackedControlsSystem.controllers[gamepad.index]) { return; }
 	      trackedControlsSystem.controllers[gamepad.index] = gamepad;
 	    });
+
 	    for (i = 0; i < trackedControlsSystem.controllers.length; ++i) {
 	      if (!trackedControlsSystem.controllers[i]) {
 	        trackedControlsSystem.controllers[i] = {id: '___', index: -1, hand: 'finger'};
@@ -1296,6 +1327,7 @@
 	    }
 	  }
 	});
+
 
 /***/ }),
 /* 8 */
