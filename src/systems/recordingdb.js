@@ -28,7 +28,9 @@ AFRAME.registerSystem('recordingdb', {
       var objectStore;
 
       // Create object store.
-      objectStore = db.createObjectStore('recordings');
+      objectStore = db.createObjectStore('recordings', {
+        autoIncrement: false
+      });
       objectStore.createIndex('recordingName', 'recordingName', {unique: true});
       self.objectStore = objectStore;
     };
@@ -64,7 +66,7 @@ AFRAME.registerSystem('recordingdb', {
             return;
           }
 
-          recordingNames.push(cursor.value.recordingName);
+          recordingNames.push(cursor.key);
           cursor.continue();
         };
       });
