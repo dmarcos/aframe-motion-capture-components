@@ -3,14 +3,6 @@ require('aframe');
 require('../src/index.js');
 const helpers = require('./helpers');
 
-const recordKeyEvent = new Event('keydown');
-recordKeyEvent.keyCode = 32;
-
-const clearKeyEvent = new Event('keydown');
-clearKeyEvent.keyCode = 67;
-
-var LOCALSTORAGE_KEY = 'avatarRecordings';
-
 suite('avatar-recorder', function () {
   var component;
   var sceneEl;
@@ -19,11 +11,27 @@ suite('avatar-recorder', function () {
     sceneEl = document.createElement('a-scene');
     sceneEl.addEventListener('componentinitialized', evt => {
       if (evt.detail.name !== 'avatar-recorder') { return; }
-      component = sceneEl.components['avatar-recorder'];
-      // Don't save recordings in test.
-      this.sinon.stub(component, 'saveRecordingFile');
-      done();
+      if (sceneEl.systems.recordingdb.hasLoaded) {
+        component = sceneEl.components['avatar-recorder'];
+        waitForCamera();
+      } else {
+        sceneEl.addEventListener('recordingdbinitialized', function () {
+          component = sceneEl.components['avatar-recorder'];
+          waitForCamera();
+        });
+      }
     });
+
+    function waitForCamera () {
+      if (sceneEl.camera) {
+        done();
+        return;
+      }
+      sceneEl.addEventListener('camera-set-active', function () {
+        done();
+      });
+    }
+
     sceneEl.setAttribute('avatar-recorder', '');
     document.body.appendChild(sceneEl);
   });
@@ -31,26 +39,18 @@ suite('avatar-recorder', function () {
   teardown(function () {
     // https://github.com/aframevr/aframe/pull/2302
     window.removeEventListener('keydown', component.onKeyDown);
-    localStorage.clear();
   });
 
-  test('gets the camera element', function (done) {
+  test('gets the camera element', function () {
     component.startRecording();
-    sceneEl.addEventListener('camera-set-active', evt => {
-      setTimeout(() => {
-        assert.equal(component.cameraEl, sceneEl.camera.el);
-        done();
-      });
-    });
+    assert.equal(component.cameraEl, sceneEl.camera.el);
   });
 
-  test('sets motion-capture-recorder on camera', function (done) {
-    component.startRecording();
-    sceneEl.addEventListener('camera-set-active', evt => {
-      setTimeout(() => {
-        assert.ok(sceneEl.camera.el.getAttribute('motion-capture-recorder'));
-        done();
-      });
+  test('sets motion-capture-recorder on camera', function () {
+    sceneEl.addEventListener('camera-set-active', () => {
+      component.startRecording();
+      assert.ok(sceneEl.camera.el.getAttribute('motion-capture-recorder'));
+      done();
     });
   });
 
@@ -81,144 +81,14 @@ suite('avatar-recorder', function () {
     });
   });
 
-  test('shortcut toggles recording', function (done) {
-    const recordSpy = this.sinon.spy(component, 'startRecording');
-    const stopSpy = this.sinon.spy(component, 'stopRecording');
-
-    sceneEl.setAttribute('avatar-recorder', 'autoPlay', false);
-
-    sceneEl.addEventListener('camera-set-active', () => {
-      setTimeout(() => {
-        window.dispatchEvent(recordKeyEvent);
-        setTimeout(() => {
-          assert.equal(recordSpy.callCount, 1);
-          assert.equal(stopSpy.callCount, 0);
-          window.dispatchEvent(recordKeyEvent);
-          setTimeout(() => {
-            assert.equal(recordSpy.callCount, 1);
-            assert.equal(stopSpy.callCount, 1);
-            done();
-          }, 10);
-        }, 10);
-      }, 10);
-    });
-  });
-
-  test('stores recording in localStorage', function (done) {
+  test('adds recording to IndexedDB', function (done) {
+    sceneEl.setAttribute('avatar-recorder', 'recordingName', 'foo');
     component.startRecording();
-    sceneEl.addEventListener('camera-set-active', evt => {
-      sceneEl.setAttribute('avatar-recorder', 'autoPlay', false);
-      sceneEl.setAttribute('avatar-recorder', 'localStorage', true);
-      component.recordingData = {camera: {poses: [{timestamp: 0}], events: []}};
-      component.isRecording = true;
-      component.stopRecording();
-      assert.shallowDeepEqual(JSON.parse(localStorage.getItem(LOCALSTORAGE_KEY)),
-                              {default: component.recordingData});
-      done();
-    });
-  });
-
-  test('does not store recording in localStorage if not set', function (done) {
-    component.startRecording();
-    sceneEl.addEventListener('camera-set-active', evt => {
-      sceneEl.setAttribute('avatar-recorder', 'autoPlay', false);
-      sceneEl.setAttribute('avatar-recorder', 'localStorage', false);
-      component.recordingData = {camera: {poses: [{timestamp: 0}], events: []}};
-      component.isRecording = true;
-      component.stopRecording();
-      assert.notOk(localStorage.getItem(LOCALSTORAGE_KEY));
-      done();
-    });
-  });
-
-  test('clears localStorage and recording on shortcut', function (done) {
-    component.startRecording();
-    sceneEl.addEventListener('camera-set-active', evt => {
-      sceneEl.setAttribute('avatar-recorder', 'autoPlay', false);
-      sceneEl.setAttribute('avatar-recorder', 'localStorage', true);
-      component.recordingData = {camera: {poses: [{timestamp: 0}], events: []}};
-      component.isRecording = true;
-      component.stopRecording();
-
-      assert.ok(localStorage.getItem(LOCALSTORAGE_KEY));
-      assert.ok(component.recordingData);
-
-      window.dispatchEvent(clearKeyEvent);
-      setTimeout(() => {
-        assert.notOk(localStorage.getItem(LOCALSTORAGE_KEY));
-        assert.notOk(component.recordingData);
-        done();
-      });
-    });
-  });
-});
-
-suite('avatar-recorder (replay from localStorage)', function () {
-  var sceneEl;
-
-  setup(function (done) {
-    sceneEl = document.createElement('a-scene');
-    sceneEl.addEventListener('loaded', () => {
-      done();
-    });
-    document.body.appendChild(sceneEl);
-  });
-
-  teardown(function () {
-    // https://github.com/aframevr/aframe/pull/2302
-    window.removeEventListener('keydown', sceneEl.components['avatar-recorder'].onKeyDown);
-    localStorage.clear();
-  });
-
-  test('autoPlays from localStorage', function (done) {
-    sceneEl.addEventListener('camera-set-active', () => {
-      localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify({
-        camera: {poses: [{timestamp: 0}], events: []},
-      }));
-      setTimeout(() => {
-        var component;
-        sceneEl.setAttribute('avatar-recorder', {autoPlay: true});
-        component = sceneEl.components['avatar-recorder'];
-        localStorage.setItem('avatarRecordings', JSON.stringify({default: {}}));
-        component.replayRecording();  // Just call now to bypass the 500ms setTimeout on play.
-        assert.ok(sceneEl.components['avatar-replayer'], 'Replayer is set');
-        assert.ok(sceneEl.components['avatar-replayer'].isReplaying);
-        done();
-      });
-    });
-  });
-
-  test.only('autoPlays from localStorage with replayer set', function () {
-    sceneEl.setAttribute('avatar-replayer', {autoPlay: true});
-    const startReplayingSpy = this.sinon.spy(sceneEl.components['avatar-replayer'],
-                                             'startReplaying');
-
-    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify({
-      camera: {poses: [{timestamp: 0}], events: []},
-    }));
-
-    sceneEl.setAttribute('avatar-recorder', {autoPlay: true});
-    localStorage.setItem('avatarRecordings', JSON.stringify({default: {}}));
-    sceneEl.components['avatar-recorder'].replayRecording();  // Call now to bypass 500ms TO.
-    assert.ok(startReplayingSpy.called);
-    assert.ok(startReplayingSpy.getCalls()[0].args[0].camera.poses);
-  });
-
-  test('does not autoPlay if nothing in localStorage', function (done) {
-    sceneEl.setAttribute('avatar-recorder', 'autoPlay: true');
-    setTimeout(() => {
-      assert.notOk(sceneEl.components['avatar-replayer']);
-      done();
-    });
-  });
-
-  test('does not autoPlay if autoPlay not set', function (done) {
-    localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify({
-      camera: {poses: [{timestamp: 0}], events: []},
-    }));
-    sceneEl.setAttribute('avatar-recorder', 'autoPlay: false');
-    setTimeout(() => {
-      assert.notOk(sceneEl.components['avatar-replayer']);
+    component.recordingData = {camera: {poses: [{timestamp: 0}], events: []}};
+    component.isRecording = true;
+    component.stopRecording();
+    sceneEl.systems.recordingdb.getRecording('foo').then(data => {
+      assert.shallowDeepEqual(data, component.recordingData);
       done();
     });
   });
@@ -291,8 +161,6 @@ suite('motion-capture-recorder', function () {
     el.addEventListener('componentinitialized', evt => {
       if (evt.detail.name !== 'motion-capture-recorder') { return; }
       component = el.components['motion-capture-recorder'];
-      // Don't save recordings in test.
-      this.sinon.stub(component, 'saveCapture');
       done();
     });
     el.setAttribute('motion-capture-recorder', '');
@@ -429,26 +297,6 @@ suite('motion-capture-recorder', function () {
       assert.notOk(component.isRecording);
     });
   });
-
-  suite('saveCapture', function () {
-    test('appends download link', function (done) {
-      component.saveCapture.restore();
-      const observer = new MutationObserver(mutations => {
-        mutations.forEach(mutation => {
-          if (mutation.type !== 'childList') { return; }
-          const downloadLink = document.querySelector('.motion-capture-download');
-          assert.ok(downloadLink);
-          assert.ok(downloadLink.hasAttribute('download'));
-          assert.ok(downloadLink.hasAttribute('href'));
-          observer.disconnect();
-          done();
-        });
-      });
-      observer.observe(document.body, {childList: true});
-
-      component.saveCapture();
-    });
-  });
 });
 
 suite('motion-capture-replayer', function () {
@@ -493,7 +341,7 @@ suite('motion-capture-replayer', function () {
       assert.equal(evt.detail.id, 'foo');
       assert.ok(evt.detail.state);
       setTimeout(() => {
-        component.tick(200, 50);
+        component.tick(200, 100);
       });
     });
 

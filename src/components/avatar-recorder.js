@@ -23,13 +23,13 @@ AFRAME.registerComponent('avatar-recorder', {
     this.recordingData = null;
 
     this.onKeyDown = AFRAME.utils.bind(this.onKeyDown, this);
-    this.tick = AFRAME.utils.throttle(this.tick, 100, this);
+    this.tick = AFRAME.utils.throttle(this.throttledTick, 100, this);
   },
 
   /**
    * Poll for tracked controllers.
    */
-  tick: function () {
+  throttledTick: function () {
     var self = this;
     var trackedControllerEls = this.el.querySelectorAll('[tracked-controls]');
     this.trackedControllerEls = {};

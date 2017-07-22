@@ -13,6 +13,8 @@ AFRAME.registerSystem('recordingdb', {
     var request;
     var self = this;
 
+    this.hasLoaded = false;
+
     request = indexedDB.open(DB_NAME, VERSION);
 
     request.onerror = function (evt) {
@@ -26,7 +28,7 @@ AFRAME.registerSystem('recordingdb', {
       var objectStore;
 
       // Create object store.
-      objectStore = db.createObjectStore('recordings', {keyPath: 'recordingName'});
+      objectStore = db.createObjectStore('recordings');
       objectStore.createIndex('recordingName', 'recordingName', {unique: true});
       self.objectStore = objectStore;
     };
@@ -34,6 +36,7 @@ AFRAME.registerSystem('recordingdb', {
     // Got database.
     request.onsuccess = function (evt) {
       self.db = evt.target.result;
+      self.hasLoaded = true;
       self.sceneEl.emit('recordingdbinitialized');
     };
   },
@@ -48,7 +51,6 @@ AFRAME.registerSystem('recordingdb', {
 
   getRecordingNames: function () {
     var self = this;
-
     return new Promise(function (resolve) {
       var recordingNames = [];
 
@@ -71,7 +73,6 @@ AFRAME.registerSystem('recordingdb', {
 
   getRecordings: function (cb) {
     var self = this;
-
     return new Promise(function getRecordings (resolve) {
       self.waitForDb(function () {
         self.getTransaction().openCursor().onsuccess = function (evt) {
@@ -88,11 +89,9 @@ AFRAME.registerSystem('recordingdb', {
 
   getRecording: function (name) {
     var self = this;
-
     return new Promise(function getRecording (resolve) {
       self.waitForDb(function () {
         self.getTransaction().get(name).onsuccess = function (evt) {
-          delete evt.target.result.recordingName;
           resolve(evt.target.result);
         };
       });
@@ -100,8 +99,7 @@ AFRAME.registerSystem('recordingdb', {
   },
 
   addRecording: function (name, data) {
-    data.recordingName = name;
-    this.getTransaction().add(data);
+    this.getTransaction().add(data, name);
   },
 
   deleteRecording: function (name) {
@@ -112,7 +110,7 @@ AFRAME.registerSystem('recordingdb', {
    * Helper to wait for store to be initialized before using it.
    */
   waitForDb: function (cb) {
-    if (this.db) {
+    if (this.hasLoaded) {
       cb();
       return;
     }

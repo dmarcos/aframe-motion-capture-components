@@ -121,7 +121,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
     firstEvent = events[0];
     this.playingEvents = events;
     this.currentEventTime = firstEvent.timestamp;
-    this.el.emit(firstEvent.name, firstEvent);
+    this.el.emit(firstEvent.name, firstEvent.detail);
   },
 
   // Reset player
