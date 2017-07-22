@@ -48,15 +48,16 @@
 	  throw new Error('Component attempted to register before AFRAME was available.');
 	}
 
-	// Components
+	// Components.
 	__webpack_require__(1);
 	__webpack_require__(2);
 	__webpack_require__(3);
 	__webpack_require__(5);
 	__webpack_require__(6);
 
-	// Systems
+	// Systems.
 	__webpack_require__(7);
+	__webpack_require__(8);
 
 
 /***/ }),
@@ -412,7 +413,7 @@
 	    firstEvent = events[0];
 	    this.playingEvents = events;
 	    this.currentEventTime = firstEvent.timestamp;
-	    this.el.emit(firstEvent.name, firstEvent);
+	    this.el.emit(firstEvent.name, firstEvent.detail);
 	  },
 
 	  // Reset player
@@ -493,56 +494,26 @@
 	var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-recorder:warn');
 
 	/**
-	 * @member {object} recordingData - Where all the recording data is stored in memory.
+	 * Wrapper around individual motion-capture-recorder components for recording camera and
+	 * controllers together.
 	 */
 	AFRAME.registerComponent('avatar-recorder', {
 	  schema: {
+	    autoPlay: {default: false},
 	    autoRecord: {default: false},
-	    autoPlay: {default: true},
-	    autoSaveFile: {default: true},
-	    spectatorPlay: {default: false},
-	    spectatorPosition: {default: '0 1.6 0', type: 'vec3'},
 	    localStorage: {default: true},
 	    recordingName: {default: constants.DEFAULT_RECORDING_NAME},
 	    loop: {default: true}
 	  },
 
 	  init: function () {
+	    this.cameraEl = null;
+	    this.isRecording = false;
 	    this.trackedControllerEls = {};
-	    this.onKeyDown = this.onKeyDown.bind(this);
+	    this.recordingData = null;
+
+	    this.onKeyDown = AFRAME.utils.bind(this.onKeyDown, this);
 	    this.tick = AFRAME.utils.throttle(this.throttledTick, 100, this);
-	  },
-
-	  replayRecording: function () {
-	    var data = this.data;
-	    var el = this.el;
-	    var recordingData;
-	    var recordings;
-
-	    recordings = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS));
-	    if (recordings && recordings[data.recordingName]) {
-	      recordingData = recordings[data.recordingName];
-	    } else {
-	      recordingData = this.recordingData;
-	    }
-
-	    if (!recordingData) { return; }
-
-	    log('Replaying recording.');
-	    el.setAttribute('avatar-replayer', {
-	      loop: data.loop,
-	      spectatorMode: data.spectatorPlay,
-	      spectatorPosition: data.spectatorPosition
-	    });
-	    el.components['avatar-replayer'].startReplaying(recordingData);
-	  },
-
-	  stopReplaying: function () {
-	    var avatarReplayer = this.el.components['avatar-replayer'];
-	    if (!avatarReplayer || !avatarReplayer.isReplaying) { return; }
-	    log('Stopped replaying.');
-	    avatarReplayer.stopReplaying();
-	    this.el.setAttribute('avatar-replayer', 'spectatorMode', false);
 	  },
 
 	  /**
@@ -552,9 +523,10 @@
 	    var self = this;
 	    var trackedControllerEls = this.el.querySelectorAll('[tracked-controls]');
 	    this.trackedControllerEls = {};
-	    trackedControllerEls.forEach(function (trackedControllerEl) {
+	    trackedControllerEls.forEach(function setupController (trackedControllerEl) {
 	      if (!trackedControllerEl.id) {
-	        warn('Found tracked controllers with no id. It will not be recorded');
+	        warn('Found a tracked controller entity without an ID. ' +
+	             'Provide an ID or this controller will not be recorded');
 	        return;
 	      }
 	      trackedControllerEl.setAttribute('motion-capture-recorder', {
@@ -569,14 +541,6 @@
 	  },
 
 	  play: function () {
-	    var self = this;
-
-	    if (this.data.autoPlay) {
-	      // Add timeout to let the scene load a bit before replaying.
-	      setTimeout(function () {
-	        self.replayRecording();
-	      }, 500);
-	    }
 	    window.addEventListener('keydown', this.onKeyDown);
 	  },
 
@@ -589,55 +553,19 @@
 	   */
 	  onKeyDown: function (evt) {
 	    var key = evt.keyCode;
-	    var KEYS = {space: 32, c: 67, p: 80, u: 85};
-
+	    var KEYS = {space: 32};
 	    switch (key) {
 	      // <space>: Toggle recording.
 	      case KEYS.space: {
 	        this.toggleRecording();
 	        break;
 	      }
-
-	      // p: Toggle recording.
-	      case KEYS.p: {
-	        this.toggleReplaying();
-	        break;
-	      }
-
-	      // c: Clear localStorage.
-	      case KEYS.c: {
-	        this.clearRecordings();
-	        break;
-	      }
-
-	      // u: Upload recording.
-	      case KEYS.u: {
-	        this.uploadRecording();
-	        break;
-	      }
 	    }
 	  },
 
-	  clearRecordings: function () {
-	    log('Recordings cleared from localStorage.');
-	    this.recordingData = null;
-	    localStorage.removeItem(constants.LOCALSTORAGE_RECORDINGS);
-	  },
-
-	  toggleReplaying: function () {
-	    var avatarPlayer = this.el.components['avatar-replayer'];
-	    if (!avatarPlayer) {
-	      this.el.setAttribute('avatar-replayer', '');
-	      avatarPlayer = this.el.components['avatar-replayer'];
-	    }
-
-	    if (avatarPlayer.isReplaying) {
-	      this.stopReplaying();
-	    } else {
-	      this.replayRecording();
-	    }
-	  },
-
+	  /**
+	   * Start or stop recording.
+	   */
 	  toggleRecording: function () {
 	    if (this.isRecording) {
 	      this.stopRecording();
@@ -646,6 +574,9 @@
 	    }
 	  },
 
+	  /**
+	   * Set motion capture recorder on the camera once the camera is ready.
+	   */
 	  setupCamera: function (doneCb) {
 	    var el = this.el;
 	    var self = this;
@@ -656,11 +587,10 @@
 	      return;
 	    }
 
-	    el.addEventListener('camera-set-active', setup)
-
-	    function setup (evt) {
+	    el.addEventListener('camera-set-active', function setup (evt) {
 	      prepareCamera(evt.detail.cameraEl);
-	    };
+	      el.removeEventListener('camera-set-active', setup);
+	    });
 
 	    function prepareCamera (cameraEl) {
 	      if (self.cameraEl) {
@@ -671,154 +601,90 @@
 	        autoRecord: false,
 	        visibleStroke: false
 	      });
-	      el.removeEventListener('camera-set-active', setup);
 	      doneCb(cameraEl)
 	    }
 	  },
 
+	  /**
+	   * Start recording camera and tracked controls.
+	   */
 	  startRecording: function () {
 	    var trackedControllerEls = this.trackedControllerEls;
-	    var keys;
 	    var self = this;
 
 	    if (this.isRecording) { return; }
 
-	    keys = Object.keys(trackedControllerEls);
 	    log('Starting recording!');
-	    this.stopReplaying();
+
+	    if (this.el.components['avatar-replayer']) {
+	      this.el.components['avatar-replayer'].stopReplaying();
+	    }
+
+	    // Get camera.
 	    this.setupCamera(function cameraSetUp () {
 	      self.isRecording = true;
+	      // Record camera.
 	      self.cameraEl.components['motion-capture-recorder'].startRecording();
-	      keys.forEach(function startRecordingControllers (id) {
+	      // Record tracked controls.
+	      Object.keys(trackedControllerEls).forEach(function startRecordingController (id) {
 	        trackedControllerEls[id].components['motion-capture-recorder'].startRecording();
 	      });
 	    });
 	  },
 
+	  /**
+	   * Tell camera and tracked controls motion-capture-recorder components to stop recording.
+	   * Store recording and replay if autoPlay is on.
+	   */
 	  stopRecording: function () {
 	    var trackedControllerEls = this.trackedControllerEls;
-	    var keys = Object.keys(trackedControllerEls);
+
 	    if (!this.isRecording) { return; }
+
 	    log('Stopped recording.');
 	    this.isRecording = false;
 	    this.cameraEl.components['motion-capture-recorder'].stopRecording();
-	    keys.forEach(function (id) {
+	    Object.keys(trackedControllerEls).forEach(function (id) {
 	      trackedControllerEls[id].components['motion-capture-recorder'].stopRecording();
 	    });
-	    this.saveRecording();
-	    if (this.data.autoPlay) { this.replayRecording(); }
+	    this.recordingData = this.getJSONData();
+	    this.storeRecording(this.recordingData);
+
+	    if (this.data.autoPlay) {
+	      this.replayRecording();
+	    }
 	  },
 
+	  /**
+	   * Gather the JSON data from the camera and tracked controls motion-capture-recorder
+	   * components. Combine them together, keyed by the (active) `camera` and by the
+	   * tracked controller IDs.
+	   */
 	  getJSONData: function () {
 	    var data = {};
 	    var trackedControllerEls = this.trackedControllerEls;
-	    var keys = Object.keys(trackedControllerEls);
+
 	    if (this.isRecording) { return; }
-	    this.isRecording = false;
+
+	    // Camera.
 	    data.camera = this.cameraEl.components['motion-capture-recorder'].getJSONData();
-	    keys.forEach(function (id) {
+
+	    // Tracked controls.
+	    Object.keys(trackedControllerEls).forEach(function getControllerData (id) {
 	      data[id] = trackedControllerEls[id].components['motion-capture-recorder'].getJSONData();
 	    });
-	    this.recordingData = data;
+
 	    return data;
 	  },
 
-	  saveRecording: function () {
-	    var recordingData = this.getJSONData()
-	    if (this.data.localStorage) {
-	      log('Recording saved to localStorage.');
-	      this.saveToLocalStorage(recordingData);
-	    }
-	    if (this.data.autoSaveFile) {
-	      log('Recording saved to file.');
-	      this.saveRecordingFile(recordingData);
-	    }
-	  },
-
-	  saveToLocalStorage: function (recordingData) {
+	  /**
+	   * Store recording in IndexedDB using recordingdb system.
+	   */
+	  storeRecording: function (recordingData) {
 	    var data = this.data;
-	    var recordings;
-	    recordings = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)) || {};
-	    recordings[data.recordingName] = recordingData;
-	    localStorage.setItem(constants.LOCALSTORAGE_RECORDINGS, JSON.stringify(recordings));
-	  },
-
-	  /**
-	   * Download recording.
-	   *
-	   * @param dataOrName - Recording data or name of recording to fetch from localStorage.
-	   */
-	  saveRecordingFile: function (dataOrName) {
-	    var aEl;
-	    var blob;
-	    var fileName;
-	    var jsonData;
-	    var url;
-
-	    // Get data.
-	    if (typeof dataOrName === 'object') {
-	      jsonData = JSON.stringify(dataOrName);
-	    } else {
-	      jsonData = localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)[dataOrName];
-	    }
-
-	    // Compose data blob.
-	    blob = new Blob([jsonData], {
-	      type: this.data.binaryFormat ? 'application/octet-binary' : 'application/json'
-	    });
-	    url = URL.createObjectURL(blob);
-
-	    // Create filename.
-	    fileName = 'recording-' + document.title.toLowerCase().replace(/ /g, '-') + '.json';
-
-	    // Create download link.
-	    aEl = document.createElement('a');
-	    aEl.href = url;
-	    aEl.setAttribute('download', fileName);
-	    aEl.innerHTML = 'Downloading...';
-	    aEl.style.display = 'none';
-
-	    // Click download link.
-	    document.body.appendChild(aEl);
-	    setTimeout(function () {
-	      aEl.click();
-	      document.body.removeChild(aEl);
-	    });
-	  },
-
-	  /**
-	   * Upload recording to myjson.com.
-	   */
-	  uploadRecording: function () {
-	    var request;
-
-	    if (!this.recordingData) {
-	      log('Cannot upload without a recording in memory.');
-	      return;
-	    }
-
-	    log('Uploading recording to myjson.com.');
-	    request = new XMLHttpRequest();
-	    request.open('POST', window.location.protocol + '//api.myjson.com/bins', true);
-	    request.setRequestHeader('Content-type', 'application/json; charset=utf-8');
-	    request.onload = function () {
-	      var aEl;
-	      var url = JSON.parse(this.responseText).uri;
-	      log('Recording uploaded to', url);
-	      aEl = document.createElement('a');
-	      aEl.innerHTML = url;
-	      aEl.setAttribute('href', url);
-	      aEl.style.position = 'fixed';
-	      aEl.style.display = 'block';
-	      aEl.style.zIndex = 99999;
-	      aEl.style.background = '#111';
-	      aEl.style.color = '#FAFAFA';
-	      aEl.style.padding = '15px';
-	      aEl.style.left = 0;
-	      aEl.style.top = 0;
-	      document.body.appendChild(aEl);
-	    }
-	    request.send(JSON.stringify(this.recordingData));
+	    if (!data.localStorage) { return; }
+	    log('Recording stored in localStorage.');
+	    this.el.systems.recordingdb.addRecording(data.recordingName, recordingData);
 	  }
 	});
 
@@ -837,9 +703,13 @@
 
 	/* global THREE, AFRAME  */
 	var constants = __webpack_require__(4);
+
+	var bind = AFRAME.utils.bind;
 	var error = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:error');
 	var log = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:info');
 	var warn = AFRAME.utils.debug('aframe-motion-capture:avatar-replayer:warn');
+
+	var fileLoader = new THREE.FileLoader();
 
 	AFRAME.registerComponent('avatar-replayer', {
 	  schema: {
@@ -854,20 +724,30 @@
 
 	  init: function () {
 	    var sceneEl = this.el;
-	    this.setupCameras = this.setupCameras.bind(this);
+
+	    // Bind methods.
+	    this.onKeyDown = bind(this.onKeyDown, this);
+
+	    // Create spectator camera either if we are in spectator mode or toggling to it.
+	    this.initSpectatorCamera();
+
 	    // Prepare camera.
+	    this.setupCamera = bind(this.setupCamera, this);
 	    if (sceneEl.camera) {
-	      this.setupCameras();
+	      this.setupCamera();
 	    } else {
-	      this.el.addEventListener('camera-set-active', this.setupCameras);
+	      sceneEl.addEventListener('camera-set-active', this.setupCamera);
 	    }
-	    this.el.addEventListener('replayingstopped', this.restoreCamera.bind(this));
-	    this.onKeyDown = this.onKeyDown.bind(this);
+
+	    if (this.data.autoPlay) {
+	      this.replayRecordingFromSource();
+	    }
 	  },
 
 	  update: function (oldData) {
 	    var data = this.data;
 
+	    // Handle toggling spectator mode.
 	    if ('spectatorMode' in oldData && oldData.spectatorMode !== data.spectatorMode) {
 	      if (data.spectatorMode) {
 	        this.activateSpectatorCamera();
@@ -876,9 +756,9 @@
 	      }
 	    }
 
-	    if (oldData.src !== data.src && data.autoPlay) {
-	      this.replayRecordingFromSource(oldData);
-	      this.activateSpectatorCamera();
+	    // Handle `src` changing.
+	    if (data.src && oldData.src !== data.src && data.autoPlay) {
+	      this.replayRecordingFromSource();
 	    }
 	  },
 
@@ -895,32 +775,34 @@
 	    this.cameraEl.removeObject3D('replayerMesh');
 	  },
 
-	  restoreCamera: function() {
-	    if (this.data.spectatorMode) {
-	      this.cameraEl.setAttribute('camera', 'active', true);
-	    }
-	  },
-
-	  setupCameras: function () {
+	  /**
+	   * Grab a handle to the "original" camera.
+	   * Initialize spectator camera and dummy geometry for original camera.
+	   */
+	  setupCamera: function () {
 	    var data = this.data;
 	    var sceneEl = this.el;
+
 	    if (data.cameraOverride) {
+	      // Specify which camera is the original camera (e.g., used by Inspector).
 	      this.cameraEl = data.cameraOverride;
 	    } else {
+	      // Default camera.
 	      this.cameraEl = sceneEl.camera.el;
+	      // Make sure A-Frame doesn't automatically remove this camera.
 	      this.cameraEl.removeAttribute('data-aframe-default-camera');
 	    }
-	    this.el.removeEventListener('camera-set-active', this.setupCameras);
-	    this.initSpectatorCamera();
+
+	    sceneEl.removeEventListener('camera-set-active', this.setupCamera);
+
 	    this.configureHeadGeometry();
 	  },
 
 	  /**
-	   * tab = toggle spectator camera
+	   * q: Toggle spectator camera.
 	   */
 	  onKeyDown: function (evt) {
-	    var key = evt.keyCode;
-	    switch (key) {
+	    switch (evt.keyCode) {
 	      // q.
 	      case 81: {
 	        this.el.setAttribute('avatar-replayer', 'spectatorMode', !this.data.spectatorMode);
@@ -929,17 +811,14 @@
 	    }
 	  },
 
+	  /**
+	   * Activate spectator camera, show replayer mesh.
+	   */
 	  activateSpectatorCamera: function () {
 	    var spectatorCameraEl = this.spectatorCameraEl;
 
-	    if (!spectatorCameraEl) {
-	      this.el.sceneEl.addEventListener('camera-set-active',
-	                                       this.activateSpectatorCamera.bind(this));
-	      return;
-	    }
-
 	    if (!spectatorCameraEl.hasLoaded) {
-	      spectatorCameraEl.addEventListener('loaded', this.activateSpectatorCamera.bind(this));
+	      spectatorCameraEl.addEventListener('loaded', bind(this.activateSpectatorCamera, this));
 	      return;
 	    }
 
@@ -948,6 +827,9 @@
 	    this.cameraEl.getObject3D('replayerMesh').visible = true;
 	  },
 
+	  /**
+	   * Deactivate spectator camera (by setting original camera active), hide replayer mesh.
+	   */
 	  deactivateSpectatorCamera: function () {
 	    log('Deactivating spectator camera');
 	    this.cameraEl.setAttribute('camera', 'active', true);
@@ -963,22 +845,29 @@
 	    var spectatorCameraEl;
 	    var spectatorCameraRigEl;
 
+	    // Developer-defined spectator rig.
 	    if (this.el.querySelector('#spectatorCameraRig')) {
-	      this.spectatorCameraEl = this.el.querySelector('#spectatorCameraRig');
+	      this.spectatorCameraEl = sceneEl.querySelector('#spectatorCameraRig');
 	      return;
 	    }
 
-	    spectatorCameraEl = this.spectatorCameraEl =
-	      sceneEl.querySelector('#spectatorCamera') || document.createElement('a-entity');
-	    spectatorCameraRigEl = this.spectatorCameraRigEl =
-	      sceneEl.querySelector('#spectatorCameraRig') || document.createElement('a-entity');
-	    spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
-
-	    spectatorCameraEl.id = 'spectatorCamera';
+	    // Create spectator camera rig.
+	    spectatorCameraRigEl = sceneEl.querySelector('#spectatorCameraRig') ||
+	                           document.createElement('a-entity');
 	    spectatorCameraRigEl.id = 'spectatorCameraRig';
+	    spectatorCameraRigEl.setAttribute('position', data.spectatorPosition);
+	    this.spectatorCameraRigEl = spectatorCameraRigEl;
+
+	    // Create spectator camera.
+	    spectatorCameraEl = sceneEl.querySelector('#spectatorCamera') ||
+	                        document.createElement('a-entity');
+	    spectatorCameraEl.id = 'spectatorCamera';
 	    spectatorCameraEl.setAttribute('camera', {active: data.spectatorMode, userHeight: 0});
 	    spectatorCameraEl.setAttribute('look-controls', '');
 	    spectatorCameraEl.setAttribute('wasd-controls', {fly: true});
+	    this.spectatorCameraEl = spectatorCameraEl;
+
+	    // Append rig.
 	    spectatorCameraRigEl.appendChild(spectatorCameraEl);
 	    sceneEl.appendChild(spectatorCameraRigEl);
 	  },
@@ -986,59 +875,61 @@
 	  /**
 	   * Check for recording sources and play.
 	   */
-	  replayRecordingFromSource: function (oldSrc) {
+	  replayRecordingFromSource: function () {
 	    var data = this.data;
-	    var localStorageData;
-	    var queryParamSrc;
+	    var recordingdb = this.el.systems.recordingdb;;
+	    var recordingNames;
 	    var src;
+	    var self = this;
 
 	    // Allow override to display replayer from query param.
 	    if (new URLSearchParams(window.location.search).get('avatar-replayer-disabled') !== null) {
 	      return;
 	    }
 
-	    queryParamSrc = this.getSrcFromSearchParam();
+	    recordingdb.getRecordingNames().then(function (recordingNames) {
+	      // See if recording defined in query parameter.
+	      var queryParamSrc = self.getSrcFromSearchParam();
 
-	    // 1. Try `avatar-recorder` query parameter as recording name from localStorage.
-	    localStorageData = JSON.parse(localStorage.getItem(constants.LOCALSTORAGE_RECORDINGS)) || {};
-	    // Try to search `avatar-recorder` query parameter argument in localStorage.
-	    if (localStorageData[queryParamSrc]) {
-	      log('Replaying `' + queryParamSrc + '` from localStorage.');
-	      this.startReplaying(localStorageData[queryParamSrc]);
-	      return;
-	    }
-
-	    // 2. Use `avatar-recorder` query parameter or `data.src` as URL
-	    // From external file.
-	    src = queryParamSrc || data.src;
-	    if (src) {
-	      if (data.src) {
-	        log('Replaying from component `src`', src);
-	      } else if (queryParamSrc) {
-	        log('Replaying from query parameter `avatar-recording`', src);
+	      // 1. Try `avatar-recorder` query parameter as recording name from IndexedDB.
+	      if (recordingNames.indexOf(queryParamSrc) !== -1) {
+	        log('Replaying `' + queryParamSrc + '` from IndexedDB.');
+	        recordingdb.getRecording(queryParamSrc).then(bind(self.startReplaying, self));
+	        return;
 	      }
-	      this.loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
-	      return;
-	    }
 
-	    // 3. Use `data.recordingName` as recording name from localStorage.
-	    if (localStorageData[data.recordingName]) {
-	      log('Replaying `' + data.recordingName + '` from localStorage.');
-	      this.startReplaying(localStorageData[data.recordingName]);
-	    }
+	      // 2. Use `avatar-recorder` query parameter or `data.src` as URL.
+	      src = queryParamSrc || data.src;
+	      if (src) {
+	        if (data.src) {
+	          log('Replaying from component `src`', src);
+	        } else if (queryParamSrc) {
+	          log('Replaying from query parameter `recording`', src);
+	        }
+	        self.loadRecordingFromUrl(src, false, bind(self.startReplaying, self));
+	        return;
+	      }
+
+	      // 3. Use `data.recordingName` as recording name from IndexedDB.
+	      if (recordingNames.indexOf(data.recordingName) !== -1) {
+	        log('Replaying `' + data.recordingName + '` from IndexedDB.');
+	        recordingdb.getRecording(data.recordingName).then(bind(self.startReplaying, self));
+	      }
+	    });
 	  },
 
 	  /**
 	   * Defined for test stubbing.
 	   */
 	  getSrcFromSearchParam: function () {
-	    return new URLSearchParams(window.location.search).get('avatar-recording');
+	    var search = new URLSearchParams(window.location.search);
+	    return search.get('recording') || search.get('avatar-recording');
 	  },
 
 	  /**
 	   * Set player on camera and controllers (marked by ID).
 	   *
-	   * @params {object} data - {
+	   * @params {object} replayData - {
 	   *   camera: {poses: [], events: []},
 	   *   [c1ID]: {poses: [], events: []},
 	   *   [c2ID]: {poses: [], events: []}
@@ -1064,26 +955,26 @@
 
 	    this.cameraEl.removeAttribute('motion-capture-replayer');
 
-	    Object.keys(replayData).forEach(function setPlayer (key) {
-	      var puppetEl;
+	    Object.keys(replayData).forEach(function setReplayer (key) {
+	      var replayingEl;
 
 	      if (key === 'camera') {
 	        // Grab camera.
 	        log('Setting motion-capture-replayer on camera.');
-	        puppetEl = self.cameraEl;
+	        replayingEl = self.cameraEl;
 	      } else {
 	        // Grab other entities.
 	        log('Setting motion-capture-replayer on ' + key + '.');
-	        puppetEl = sceneEl.querySelector('#' + key);
-	        if (!puppetEl) {
+	        replayingEl = sceneEl.querySelector('#' + key);
+	        if (!replayingEl) {
 	          error('No element found with ID ' + key + '.');
 	          return;
 	        }
 	      }
 
 	      log('Setting motion-capture-replayer on ' + key + '.');
-	      puppetEl.setAttribute('motion-capture-replayer', {loop: data.loop});
-	      puppetEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
+	      replayingEl.setAttribute('motion-capture-replayer', {loop: data.loop});
+	      replayingEl.components['motion-capture-replayer'].startReplaying(replayData[key]);
 	    });
 	  },
 
@@ -1099,13 +990,15 @@
 	    var leftEyeBallMesh;
 	    var rightEyeBallMesh;
 
-	    if (cameraEl.getObject3D('mesh')) { return; }
+	    if (cameraEl.getObject3D('mesh') || cameraEl.getObject3D('replayerMesh')) { return; }
 
+	    // Head.
 	    headMesh = new THREE.Mesh();
 	    headMesh.geometry = new THREE.BoxBufferGeometry(0.3, 0.3, 0.2);
 	    headMesh.material = new THREE.MeshStandardMaterial({color: 'pink'});
 	    headMesh.visible = this.data.spectatorMode;
 
+	    // Left eye.
 	    leftEyeMesh = new THREE.Mesh();
 	    leftEyeMesh.geometry = new THREE.SphereBufferGeometry(0.05);
 	    leftEyeMesh.material = new THREE.MeshBasicMaterial({color: 'white'});
@@ -1119,6 +1012,7 @@
 	    leftEyeMesh.add(leftEyeBallMesh);
 	    headMesh.add(leftEyeMesh);
 
+	    // Right eye.
 	    rightEyeMesh = new THREE.Mesh();
 	    rightEyeMesh.geometry = new THREE.SphereBufferGeometry(0.05);
 	    rightEyeMesh.material = new THREE.MeshBasicMaterial({color: 'white'});
@@ -1135,13 +1029,16 @@
 	    cameraEl.setObject3D('replayerMesh', headMesh);
 	  },
 
+	  /**
+	   * Remove motion-capture-replayer components.
+	   */
 	  stopReplaying: function () {
 	    var self = this;
 
 	    if (!this.isReplaying || !this.replayData) { return; }
 
 	    this.isReplaying = false;
-	    Object.keys(this.replayData).forEach(function removeReplayers (key) {
+	    Object.keys(this.replayData).forEach(function removeReplayer (key) {
 	      if (key === 'camera') {
 	        self.cameraEl.removeComponent('motion-capture-replayer');
 	      } else {
@@ -1155,13 +1052,17 @@
 	    });
 	  },
 
+	  /**
+	   * XHR for data.
+	   */
 	  loadRecordingFromUrl: function (url, binary, callback) {
-	    var loader = new THREE.FileLoader(this.manager);
-	    var self = this;
 	    var data;
-	    loader.crossOrigin = 'anonymous';
-	    if (binary === true) { loader.setResponseType('arraybuffer'); }
-	    loader.load(url, function (buffer) {
+	    var self = this;
+	    fileLoader.crossOrigin = 'anonymous';
+	    if (binary === true) {
+	      fileLoader.setResponseType('arraybuffer');
+	    }
+	    fileLoader.load(url, function (buffer) {
 	      if (binary === true) {
 	        data = self.loadStrokeBinary(buffer);
 	      } else {
@@ -1395,6 +1296,133 @@
 	    }
 	  }
 	});
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	/* global indexedDB */
+	var constants = __webpack_require__(4);
+
+	var DB_NAME = 'motionCaptureRecordings';
+	var OBJECT_STORE_NAME = 'recordings';
+	var VERSION = 1;
+
+	/**
+	 * Interface for storing and accessing recordings from Indexed DB.
+	 */
+	AFRAME.registerSystem('recordingdb', {
+	  init: function () {
+	    var request;
+	    var self = this;
+
+	    this.hasLoaded = false;
+
+	    request = indexedDB.open(DB_NAME, VERSION);
+
+	    request.onerror = function (evt) {
+	      console.error('Error opening IndexedDB for motion capture.',
+	                    evt.target.errorCode);
+	    };
+
+	    // Initialize database.
+	    request.onupgradeneeded = function (evt) {
+	      var db = self.db = evt.target.result;
+	      var objectStore;
+
+	      // Create object store.
+	      objectStore = db.createObjectStore('recordings', {
+	        autoIncrement: false
+	      });
+	      objectStore.createIndex('recordingName', 'recordingName', {unique: true});
+	      self.objectStore = objectStore;
+	    };
+
+	    // Got database.
+	    request.onsuccess = function (evt) {
+	      self.db = evt.target.result;
+	      self.hasLoaded = true;
+	      self.sceneEl.emit('recordingdbinitialized');
+	    };
+	  },
+
+	  /**
+	   * Need a new transaction for everything.
+	   */
+	  getTransaction: function () {
+	    var transaction = this.db.transaction([OBJECT_STORE_NAME], 'readwrite');
+	    return transaction.objectStore(OBJECT_STORE_NAME);
+	  },
+
+	  getRecordingNames: function () {
+	    var self = this;
+	    return new Promise(function (resolve) {
+	      var recordingNames = [];
+
+	      self.waitForDb(function () {
+	        self.getTransaction().openCursor().onsuccess = function (evt) {
+	          var cursor = evt.target.result;
+
+	          // No recordings.
+	          if (!cursor) {
+	            resolve(recordingNames.sort());
+	            return;
+	          }
+
+	          recordingNames.push(cursor.key);
+	          cursor.continue();
+	        };
+	      });
+	    });
+	  },
+
+	  getRecordings: function (cb) {
+	    var self = this;
+	    return new Promise(function getRecordings (resolve) {
+	      self.waitForDb(function () {
+	        self.getTransaction().openCursor().onsuccess = function (evt) {
+	          var cursor = evt.target.result;
+	          var recordings = [cursor.value];
+	          while (cursor.ontinue()) {
+	            recordings.push(cursor.value);
+	          }
+	          resolve(recordings);
+	        };
+	      });
+	    });
+	  },
+
+	  getRecording: function (name) {
+	    var self = this;
+	    return new Promise(function getRecording (resolve) {
+	      self.waitForDb(function () {
+	        self.getTransaction().get(name).onsuccess = function (evt) {
+	          resolve(evt.target.result);
+	        };
+	      });
+	    });
+	  },
+
+	  addRecording: function (name, data) {
+	    this.getTransaction().add(data, name);
+	  },
+
+	  deleteRecording: function (name) {
+	    this.getTransaction().delete(name);
+	  },
+
+	  /**
+	   * Helper to wait for store to be initialized before using it.
+	   */
+	  waitForDb: function (cb) {
+	    if (this.hasLoaded) {
+	      cb();
+	      return;
+	    }
+	    this.sceneEl.addEventListener('recordingdbinitialized', cb);
+	  }
+	});
+
 
 /***/ })
 /******/ ]);
