@@ -41,7 +41,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
         if (gamepad === gamepadData) { found = i; }
       });
       if (found !== -1) {
-        gamepads.splice(i, 1);
+        gamepads.splice(found, 1);
       }
     }
   },
