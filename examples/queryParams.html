@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>A-Frame Motion Capture Components - Query Parameters</title>
     <meta name="description" content="A-Frame Motion Capture Components - Query Parameters">
-    <script src="https://aframe.io/releases/0.5.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/0.6.1/aframe.min.js"></script>
     <script src="js/build.js"></script>
     <script src="js/components/aabb-collider.js"></script>
     <script src="js/components/grab.js"></script>
@@ -16,12 +16,14 @@
     <div class="container">
       <div class="sidebar">
         <h1>Query Parameters</h1>
-        <p>Select from different recordings without having to change the HTML by using query parameters. Append <i>?avatar-recording=recordings/grabLeft.json</i> or <i>`?avatar-recording=recordings/grabRight.json</i>. This is useful for having multiple recordings available to a single scene. Even host the recording on a CDN and pass it right in.</p>
+        <p>
+          Select from different recordings without having to change the HTML by using query parameters.
+          Append <i>?avatar-recording=recordings/grabLeft.json</i> or <i>`?avatar-recording=recordings/grabRight.json</i>.
+          This is useful for having multiple recordings available to a single scene.
+          Even host the recording on a CDN and pass it right in.
+        </p>
       </div>
-      <a-scene fog="color: #bc483e; near: 0; far: 65;"
-               avatar-recorder="spectatorPlay: true; spectatorPosition: 0 1.6 2"
-               avatar-replayer
-               embedded>
+      <a-scene fog="color: #bc483e; near: 0; far: 65;" avatar-replayer embedded>
         <a-assets>
           <a-mixin id="cube"
                    geometry="primitive: box; height: 0.30; width: 0.30; depth: 0.30"

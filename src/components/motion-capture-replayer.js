@@ -20,13 +20,30 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.discardedFrames = 0;
     this.playingEvents = [];
     this.playingPoses = [];
+    this.gamepadData = null;
   },
 
   remove: function () {
-    this.el.removeEventListener('pause', this.playComponent);
+    var el = this.el;
+    var gamepadData = this.gamepadData;
+    var gamepads;
+    var found = -1;
+
+    el.removeEventListener('pause', this.playComponent);
     this.stopReplaying();
-    this.el.pause();
-    this.el.play();
+    el.pause();
+    el.play();
+
+    // Remove gamepad from system.
+    if (this.gamepadData) {
+      gamepads = el.sceneEl.systems['motion-capture-replayer'].gamepads;
+      gamepads.forEach(function (gamepad, i) {
+        if (gamepad === gamepadData) { found = i; }
+      });
+      if (found !== -1) {
+        gamepads.splice(found, 1);
+      }
+    }
   },
 
   update: function (oldData) {
@@ -48,7 +65,8 @@ AFRAME.registerComponent('motion-capture-replayer', {
   },
 
   updateSrc: function (src) {
-    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(src, false, this.startReplaying.bind(this));
+    this.el.sceneEl.systems['motion-capture-recorder'].loadRecordingFromUrl(
+      src, false, this.startReplaying.bind(this));
   },
 
   onStrokeStarted: function(evt) {
@@ -68,17 +86,26 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.play();
   },
 
+  /**
+   * @param {object} data - Recording data.
+   */
   startReplaying: function (data) {
+    var el = this.el;
+
     this.ignoredFrames = 0;
     this.storeInitialPose();
     this.isReplaying = true;
     this.startReplayingPoses(data.poses);
     this.startReplayingEvents(data.events);
+
+    // Add gamepad metadata to system.
     if (data.gamepad) {
-      this.el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
-      this.el.emit('gamepadconnected');
+      this.gamepadData = data.gamepad;
+      el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
+      el.emit('gamepadconnected');
     }
-    this.el.emit('replayingstarted');
+
+    el.emit('replayingstarted');
   },
 
   stopReplaying: function () {
@@ -110,6 +137,9 @@ AFRAME.registerComponent('motion-capture-replayer', {
     this.currentPoseTime = poses[0].timestamp;
   },
 
+  /**
+   * @param events {Array} - Array of events with timestamp, name, and detail.
+   */
   startReplayingEvents: function (events) {
     var firstEvent;
     this.isReplaying = true;
@@ -118,7 +148,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
     firstEvent = events[0];
     this.playingEvents = events;
     this.currentEventTime = firstEvent.timestamp;
-    this.el.emit(firstEvent.name, firstEvent);
+    this.el.emit(firstEvent.name, firstEvent.detail);
   },
 
   // Reset player
@@ -140,10 +170,11 @@ AFRAME.registerComponent('motion-capture-replayer', {
     currentEvent = playingEvents && playingEvents[this.currentEventIndex];
     this.currentPoseTime += delta;
     this.currentEventTime += delta;
-    // determine next pose
+    // Determine next pose.
+    // Comparing currentPoseTime to currentEvent.timestamp is not a typo.
     while ((currentPose && this.currentPoseTime >= currentPose.timestamp) ||
            (currentEvent && this.currentPoseTime >= currentEvent.timestamp)) {
-      // pose
+      // Pose.
       if (currentPose && this.currentPoseTime >= currentPose.timestamp) {
         if (this.currentPoseIndex === playingPoses.length - 1) {
           if (this.data.loop) {
@@ -157,7 +188,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
         this.currentPoseIndex += 1;
         currentPose = playingPoses[this.currentPoseIndex];
       }
-      // event
+      // Event.
       if (currentEvent && this.currentPoseTime >= currentEvent.timestamp) {
         if (this.currentEventIndex === playingEvents.length && this.data.loop) {
           this.currentEventIndex = 0;
@@ -170,7 +201,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
     }
   },
 
-  tick:  function (time, delta) {
+  tick: function (time, delta) {
     // Ignore the first couple of frames that come from window.RAF on Firefox.
     if (this.ignoredFrames !== 2 && !window.debug) {
       this.ignoredFrames++;
