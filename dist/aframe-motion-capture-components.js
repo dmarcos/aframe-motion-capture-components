@@ -1341,6 +1341,8 @@
 	    var sceneEl = this.sceneEl;
 	    var trackedControlsSystem = sceneEl.systems['tracked-controls'];
 
+	    this.updateControllerListOriginal();
+
 	    this.gamepads.forEach(function (gamepad) {
 	      if (trackedControlsSystem.controllers[gamepad.index]) { return; }
 	      trackedControlsSystem.controllers[gamepad.index] = gamepad;
