@@ -167,7 +167,7 @@ suite('motion-capture-recorder', function () {
   });
 
   suite('tick', function () {
-    test('records pose', function () {
+    test('records poses', function () {
       assert.equal(component.recordedPoses.length, 0);
       el.setAttribute('position', '1 1 1');
       el.setAttribute('rotation', '90 90 90');
@@ -175,10 +175,17 @@ suite('motion-capture-recorder', function () {
       component.isRecording = true;
       component.tick(100);
 
-      assert.equal(component.recordedPoses.length, 1);
+      el.setAttribute('position', '2 2 2');
+      el.setAttribute('rotation', '0 0 0');
+      component.tick(200);
+
+      assert.equal(component.recordedPoses.length, 2);
       assert.shallowDeepEqual(component.recordedPoses[0].position, {x: 1, y: 1, z: 1});
       assert.shallowDeepEqual(component.recordedPoses[0].rotation, {x: 90, y: 90, z: 90});
       assert.equal(component.recordedPoses[0].timestamp, 100);
+      assert.shallowDeepEqual(component.recordedPoses[1].position, {x: 2, y: 2, z: 2});
+      assert.shallowDeepEqual(component.recordedPoses[1].rotation, {x: 0, y: 0, z: 0});
+      assert.equal(component.recordedPoses[1].timestamp, 200);
     });
 
     test('does not record pose if not recording', function () {

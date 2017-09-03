@@ -238,8 +238,8 @@
 	      this.lastTimestamp = time;
 	      if (!this.data.enabled || !this.isRecording) { return; }
 	      newPoint = {
-	        position: this.el.getAttribute('position'),
-	        rotation: this.el.getAttribute('rotation'),
+	        position: AFRAME.utils.clone(this.el.getAttribute('position')),
+	        rotation: AFRAME.utils.clone(this.el.getAttribute('rotation')),
 	        timestamp: time
 	      };
 	      this.recordedPoses.push(newPoint);
