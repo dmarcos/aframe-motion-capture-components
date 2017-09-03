@@ -67,7 +67,7 @@
 	/* global AFRAME, THREE */
 
 	var EVENTS = {
-	  axismove: {id: 0, props: ['id', 'axis']},
+	  axismove: {id: 0, props: ['id', 'axis', 'changed']},
 	  buttonchanged: {id: 1, props: ['id', 'state']},
 	  buttondown: {id: 2, props: ['id', 'state']},
 	  buttonup: {id: 3, props: ['id', 'state']},
@@ -528,6 +528,7 @@
 	  schema: {
 	    autoPlay: {default: false},
 	    autoRecord: {default: false},
+	    cameraOverride: {type: 'selector'},
 	    localStorage: {default: true},
 	    recordingName: {default: constants.DEFAULT_RECORDING_NAME},
 	    loop: {default: true}
@@ -607,6 +608,11 @@
 	  setupCamera: function (doneCb) {
 	    var el = this.el;
 	    var self = this;
+
+	    if (this.data.cameraOverride) {
+	      prepareCamera(this.data.cameraOverride);
+	      return;
+	    }
 
 	    // Grab camera.
 	    if (el.camera && el.camera.el) {

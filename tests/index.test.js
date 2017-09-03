@@ -194,12 +194,12 @@ suite('motion-capture-recorder', function () {
       assert.equal(component.recordedEvents.length, 0);
       component.tick(100);
       component.isRecording = true;
-      el.emit('axismove', {id: 'foo', axis: {x: 1, y: 1}});
+      el.emit('axismove', {id: 'foo', axis: {x: 1, y: 1}, changed: [true, true]});
       setTimeout(() => {
         assert.equal(component.recordedEvents.length, 1);
         assert.equal(component.recordedEvents[0].name, 'axismove');
         assert.shallowDeepEqual(component.recordedEvents[0].detail, {
-          id: 'foo', axis: {x: 1, y: 1}
+          id: 'foo', axis: {x: 1, y: 1}, changed: [true, true]
         });
         assert.equal(component.recordedEvents[0].timestamp, 100);
         done();
