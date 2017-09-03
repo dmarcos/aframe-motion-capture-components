@@ -1,7 +1,7 @@
 /* global AFRAME, THREE */
 
 var EVENTS = {
-  axismove: {id: 0, props: ['id', 'axis']},
+  axismove: {id: 0, props: ['id', 'axis', 'changed']},
   buttonchanged: {id: 1, props: ['id', 'state']},
   buttondown: {id: 2, props: ['id', 'state']},
   buttonup: {id: 3, props: ['id', 'state']},

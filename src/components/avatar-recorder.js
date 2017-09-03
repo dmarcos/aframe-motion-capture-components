@@ -11,6 +11,7 @@ AFRAME.registerComponent('avatar-recorder', {
   schema: {
     autoPlay: {default: false},
     autoRecord: {default: false},
+    cameraOverride: {type: 'selector'},
     localStorage: {default: true},
     recordingName: {default: constants.DEFAULT_RECORDING_NAME},
     loop: {default: true}
@@ -90,6 +91,11 @@ AFRAME.registerComponent('avatar-recorder', {
   setupCamera: function (doneCb) {
     var el = this.el;
     var self = this;
+
+    if (this.data.cameraOverride) {
+      prepareCamera(this.data.cameraOverride);
+      return;
+    }
 
     // Grab camera.
     if (el.camera && el.camera.el) {
