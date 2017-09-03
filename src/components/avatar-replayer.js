@@ -205,9 +205,9 @@ AFRAME.registerComponent('avatar-replayer', {
       }
 
       // 2. Use `avatar-recorder` query parameter or `data.src` as URL.
-      src = queryParamSrc || data.src;
+      src = queryParamSrc || self.data.src;
       if (src) {
-        if (data.src) {
+        if (self.data.src) {
           log('Replaying from component `src`', src);
         } else if (queryParamSrc) {
           log('Replaying from query parameter `recording`', src);
@@ -217,9 +217,9 @@ AFRAME.registerComponent('avatar-replayer', {
       }
 
       // 3. Use `data.recordingName` as recording name from IndexedDB.
-      if (recordingNames.indexOf(data.recordingName) !== -1) {
-        log('Replaying `' + data.recordingName + '` from IndexedDB.');
-        recordingdb.getRecording(data.recordingName).then(bind(self.startReplaying, self));
+      if (recordingNames.indexOf(self.data.recordingName) !== -1) {
+        log('Replaying `' + self.data.recordingName + '` from IndexedDB.');
+        recordingdb.getRecording(self.data.recordingName).then(bind(self.startReplaying, self));
       }
     });
   },

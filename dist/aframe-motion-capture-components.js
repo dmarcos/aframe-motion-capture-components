@@ -409,8 +409,8 @@
 	  storeInitialPose: function () {
 	    var el = this.el;
 	    this.initialPose = {
-	      position: el.getAttribute('position'),
-	      rotation: el.getAttribute('rotation')
+	      position: AFRAME.utils.clone(el.getAttribute('position')),
+	      rotation: AFRAME.utils.clone(el.getAttribute('rotation'))
 	    };
 	  },
 
@@ -941,9 +941,9 @@
 	      }
 
 	      // 2. Use `avatar-recorder` query parameter or `data.src` as URL.
-	      src = queryParamSrc || data.src;
+	      src = queryParamSrc || self.data.src;
 	      if (src) {
-	        if (data.src) {
+	        if (self.data.src) {
 	          log('Replaying from component `src`', src);
 	        } else if (queryParamSrc) {
 	          log('Replaying from query parameter `recording`', src);
@@ -953,9 +953,9 @@
 	      }
 
 	      // 3. Use `data.recordingName` as recording name from IndexedDB.
-	      if (recordingNames.indexOf(data.recordingName) !== -1) {
-	        log('Replaying `' + data.recordingName + '` from IndexedDB.');
-	        recordingdb.getRecording(data.recordingName).then(bind(self.startReplaying, self));
+	      if (recordingNames.indexOf(self.data.recordingName) !== -1) {
+	        log('Replaying `' + self.data.recordingName + '` from IndexedDB.');
+	        recordingdb.getRecording(self.data.recordingName).then(bind(self.startReplaying, self));
 	      }
 	    });
 	  },
@@ -1304,18 +1304,28 @@
 /* 7 */
 /***/ (function(module, exports) {
 
-	var bind = AFRAME.utils.bind;
-
 	AFRAME.registerSystem('motion-capture-replayer', {
 	  init: function () {
 	    var sceneEl = this.sceneEl;
-	    var trackedControlsSystem = sceneEl.systems['tracked-controls'];
-	    var trackedControlsTick = AFRAME.components['tracked-controls'].Component.prototype.tick;
+	    var trackedControlsComponent;
+	    var trackedControlsSystem;
+	    var trackedControlsTick;
+
+	    trackedControlsSystem = sceneEl.systems['tracked-controls'];
+	    trackedControlsTick = AFRAME.components['tracked-controls'].Component.prototype.tick;
+
+	    // Gamepad data stored in recording and added here by `motion-capture-replayer` component.
 	    this.gamepads = [];
-	    this.updateControllerListOriginal = bind(trackedControlsSystem.updateControllerList, trackedControlsSystem);
-	    sceneEl.systems['tracked-controls'].updateControllerList = bind(this.updateControllerList, this);
-	    AFRAME.components['tracked-controls'].Component.prototype.tick = this.trackedControlsTickWrapper;
-	    AFRAME.components['tracked-controls'].Component.prototype.trackedControlsTick = trackedControlsTick;
+
+	    // Wrap `updateControllerList`.
+	    this.updateControllerListOriginal = trackedControlsSystem.updateControllerList.bind(
+	      trackedControlsSystem);
+	    trackedControlsSystem.updateControllerList = this.updateControllerList.bind(this);
+
+	    // Wrap `tracked-controls` tick.
+	    trackedControlsComponent = AFRAME.components['tracked-controls'].Component.prototype;
+	    trackedControlsComponent.tick = this.trackedControlsTickWrapper;
+	    trackedControlsComponent.trackedControlsTick = trackedControlsTick;
 	  },
 
 	  trackedControlsTickWrapper: function (time, delta) {
@@ -1323,23 +1333,25 @@
 	    this.trackedControlsTick(time, delta);
 	  },
 
+	  /**
+	   * Wrap `updateControllerList` to stub in the gamepads and emit `controllersupdated`.
+	   */
 	  updateControllerList: function () {
 	    var i;
 	    var sceneEl = this.sceneEl;
 	    var trackedControlsSystem = sceneEl.systems['tracked-controls'];
-
-	    this.updateControllerListOriginal();
 
 	    this.gamepads.forEach(function (gamepad) {
 	      if (trackedControlsSystem.controllers[gamepad.index]) { return; }
 	      trackedControlsSystem.controllers[gamepad.index] = gamepad;
 	    });
 
-	    for (i = 0; i < trackedControlsSystem.controllers.length; ++i) {
-	      if (!trackedControlsSystem.controllers[i]) {
-	        trackedControlsSystem.controllers[i] = {id: '___', index: -1, hand: 'finger'};
-	      }
+	    for (i = 0; i < trackedControlsSystem.controllers.length; i++) {
+	      if (trackedControlsSystem.controllers[i]) { continue; }
+	      trackedControlsSystem.controllers[i] = {id: '___', index: -1, hand: 'finger'};
 	    }
+
+	    sceneEl.emit('controllersupdated', undefined, false);
 	  }
 	});
 

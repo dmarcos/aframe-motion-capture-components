@@ -117,8 +117,8 @@ AFRAME.registerComponent('motion-capture-replayer', {
   storeInitialPose: function () {
     var el = this.el;
     this.initialPose = {
-      position: el.getAttribute('position'),
-      rotation: el.getAttribute('rotation')
+      position: AFRAME.utils.clone(el.getAttribute('position')),
+      rotation: AFRAME.utils.clone(el.getAttribute('rotation'))
     };
   },
 
