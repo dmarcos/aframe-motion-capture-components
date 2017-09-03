@@ -1,6 +1,6 @@
 {
   "name": "aframe-motion-capture-components",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A-Frame motion capture components",
   "author": "Diego Marcos <diego.marcos@gmail.com>",
   "license": "MIT",
@@ -8,8 +8,7 @@
   "scripts": {
     "build": "cross-env NODE_ENV=production webpack --config webpack.dev.js",
     "start": "webpack-dev-server --host 0.0.0.0 --config webpack.dev.js --progress --colors --hot -d --open --inline",
-    "dist": "webpack src/index.js dist/aframe-motion-capture-components.js && webpack -p src/index.js dist/aframe-motion-capture-components.min.js",
-    "lint": "semistandard -v | snazzy",
+    "dist": "webpack src/index.js dist/aframe-motion-capture-components.js && webpack -p src/index.js dist/aframe-motion-capture-components.min.js", "lint": "semistandard -v | snazzy",
     "prepublish": "npm run dist",
     "preghpages": "npm run build && shx rm -rf gh-pages && shx mkdir gh-pages && shx cp -r examples/* gh-pages",
     "ghpages": "npm run preghpages && gh-pages -d gh-pages",

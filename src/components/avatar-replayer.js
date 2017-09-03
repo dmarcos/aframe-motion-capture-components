@@ -87,6 +87,7 @@ AFRAME.registerComponent('avatar-replayer', {
       // Make sure A-Frame doesn't automatically remove this camera.
       this.cameraEl.removeAttribute('data-aframe-default-camera');
     }
+    this.cameraEl.setAttribute('data-aframe-avatar-replayer-camera', '');
 
     sceneEl.removeEventListener('camera-set-active', this.setupCamera);
 
