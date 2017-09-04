@@ -59,7 +59,8 @@ it or if we don't need recording (i.e., production).
 
 `avatar-replayer` can be manually disabled from the URL query parameter
 `avatar-replayer-disabled` (e.g.,
-`http://localhost:8000/?avatar-replayer-disabled`).
+`http://localhost:8000/?avatar-replayer-disabled`). `spectator-mode` can be
+enabled using the URL query parameter `specatatorMode`.
 
 ##### From localStorage
 

@@ -40,11 +40,17 @@ AFRAME.registerComponent('avatar-replayer', {
 
   update: function (oldData) {
     var data = this.data;
+    var spectatorModeUrlParam;
+
+    spectatorModeUrlParam =
+      window.location.search.indexOf('spectatormode') !== -1 ||
+      window.location.search.indexOf('spectatorMode') !== -1;
 
     // Handle toggling spectator mode. Don't run on initialization. Want to activate after
     // the player camera is initialized.
-    if (oldData.spectatorMode !== data.spectatorMode) {
-      if (data.spectatorMode) {
+    if (oldData.spectatorMode !== data.spectatorMode ||
+        spectatorModeUrlParam) {
+      if (data.spectatorMode || spectatorModeUrlParam) {
         this.activateSpectatorCamera();
       } else if (oldData.spectatorMode === true) {
         this.deactivateSpectatorCamera();
