@@ -375,3 +375,37 @@ suite('motion-capture-replayer', function () {
     component.tick(150, 50);
   });
 });
+
+suite('motion-capture-replayer system', function () {
+  var el;
+
+  setup(function (done) {
+    el = helpers.entityFactory();
+    el.addEventListener('componentinitialized', evt => {
+      if (evt.detail.name !== 'motion-capture-replayer') { return; }
+      component = el.components['motion-capture-replayer'];
+      setTimeout(() => { done(); }, 50);
+    });
+    el.setAttribute('motion-capture-replayer', 'loop: false');
+  });
+
+  test('injects tracked-controls', function (done) {
+    el.components['motion-capture-replayer'].startReplaying({
+      gamepad: {id: 'OpenVR Controller', index: 1, hand: 'left'},
+      poses: [{timestamp: 100, position: '1 1 1', rotation: '90 90 90'}],
+      events: []
+    });
+
+    assert.equal(el.sceneEl.systems['motion-capture-replayer'].gamepads.length, 1);
+    assert.equal(el.sceneEl.systems['tracked-controls'].controllers.length, 0);
+
+    el.sceneEl.addEventListener('controllersupdated', () => {
+      assert.equal(el.sceneEl.systems['tracked-controls'].controllers.length, 2);
+      assert.equal(el.sceneEl.systems['tracked-controls'].controllers[1].id,
+                   'OpenVR Controller');
+      done();
+    });
+
+    el.sceneEl.systems['motion-capture-replayer'].updateControllerList();
+  });
+});
