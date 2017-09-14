@@ -1383,13 +1383,13 @@
 	    var request;
 	    var self = this;
 
+	    this.db = null;
 	    this.hasLoaded = false;
 
 	    request = indexedDB.open(DB_NAME, VERSION);
 
-	    request.onerror = function (evt) {
-	      console.error('Error opening IndexedDB for motion capture.',
-	                    evt.target.errorCode);
+	    request.onerror = function () {
+	      console.error('Error opening IndexedDB for motion capture.', request.error);
 	    };
 
 	    // Initialize database.
