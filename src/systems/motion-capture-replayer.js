@@ -22,6 +22,15 @@ AFRAME.registerSystem('motion-capture-replayer', {
     trackedControlsComponent.trackedControlsTick = trackedControlsTick;
   },
 
+  remove: function () {
+    // restore modified objects
+    var trackedControlsComponent = AFRAME.components['tracked-controls'].Component.prototype;
+    var trackedControlsSystem = this.sceneEl.systems['tracked-controls'];
+    trackedControlsComponent.tick = trackedControlsComponent.trackedControlsTick;
+    delete trackedControlsComponent.trackedControlsTick;
+    trackedControlsSystem.updateControllerList = this.updateControllerListOriginal;
+  },
+
   trackedControlsTickWrapper: function (time, delta) {
     if (this.el.components['motion-capture-replayer']) { return; }
     this.trackedControlsTick(time, delta);
