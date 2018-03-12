@@ -102,7 +102,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
     if (data.gamepad) {
       this.gamepadData = data.gamepad;
       el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
-      el.emit('gamepadconnected');
+      el.sceneEl.systems['motion-capture-replayer'].updateControllerList();
     }
 
     el.emit('replayingstarted');
