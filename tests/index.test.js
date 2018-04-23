@@ -321,6 +321,8 @@ suite('motion-capture-replayer', function () {
   });
 
   test('plays poses', function () {
+    var rotTemp
+
     assert.shallowDeepEqual(el.getAttribute('position'), {x: 0, y: 0, z: 0});
     assert.shallowDeepEqual(el.getAttribute('rotation'), {x: 0, y: 0, z: 0});
 
@@ -336,11 +338,19 @@ suite('motion-capture-replayer', function () {
 
     component.tick(200, 50);
     assert.shallowDeepEqual(el.getAttribute('position'), {x: 2, y: 2, z: 2});
-    assert.shallowDeepEqual(el.getAttribute('rotation'), {x: 60, y: 60, z: 60});
+    rotTemp = el.getAttribute('rotation');
+    rotTemp.x = Math.round(rotTemp.x);
+    rotTemp.y = Math.round(rotTemp.y);
+    rotTemp.z = Math.round(rotTemp.z);
+    assert.shallowDeepEqual(rotTemp, {x: 60, y: 60, z: 60});
 
     component.tick(300, 100);
     assert.shallowDeepEqual(el.getAttribute('position'), {x: 3, y: 3, z: 3});
-    assert.shallowDeepEqual(el.getAttribute('rotation'), {x: 30, y: 30, z: 30});
+    rotTemp = el.getAttribute('rotation');
+    rotTemp.x = Math.round(rotTemp.x);
+    rotTemp.y = Math.round(rotTemp.y);
+    rotTemp.z = Math.round(rotTemp.z);
+    assert.shallowDeepEqual(rotTemp, {x: 30, y: 30, z: 30});
   });
 
   test('plays events', function (done) {
@@ -389,7 +399,9 @@ suite('motion-capture-replayer system', function () {
     el.setAttribute('motion-capture-replayer', 'loop: false');
   });
 
-  test('injects tracked-controls', function (done) {
+  test('injects tracked-controls', function () {
+    var controllersUpdatedSpy = new sinon.spy()
+    assert.equal(el.sceneEl.systems['tracked-controls'].controllers.length, 0);
     el.components['motion-capture-replayer'].startReplaying({
       gamepad: {id: 'OpenVR Controller', index: 1, hand: 'left'},
       poses: [{timestamp: 100, position: '1 1 1', rotation: '90 90 90'}],
@@ -397,15 +409,13 @@ suite('motion-capture-replayer system', function () {
     });
 
     assert.equal(el.sceneEl.systems['motion-capture-replayer'].gamepads.length, 1);
-    assert.equal(el.sceneEl.systems['tracked-controls'].controllers.length, 0);
 
-    el.sceneEl.addEventListener('controllersupdated', () => {
-      assert.equal(el.sceneEl.systems['tracked-controls'].controllers.length, 2);
-      assert.equal(el.sceneEl.systems['tracked-controls'].controllers[1].id,
-                   'OpenVR Controller');
-      done();
-    });
+    el.sceneEl.addEventListener('controllersupdated', controllersUpdatedSpy);
 
     el.sceneEl.systems['motion-capture-replayer'].updateControllerList();
+    assert.equal(el.sceneEl.systems['tracked-controls'].controllers.length, 2);
+    assert.equal(el.sceneEl.systems['tracked-controls'].controllers[1].id,
+                 'OpenVR Controller');
+    assert.isTrue(controllersUpdatedSpy.called)
   });
 });
