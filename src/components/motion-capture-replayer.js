@@ -216,4 +216,5 @@ AFRAME.registerComponent('motion-capture-replayer', {
 function applyPose (el, pose) {
   el.setAttribute('position', pose.position);
   el.setAttribute('rotation', pose.rotation);
+  el.object3D.updateMatrix()
 };

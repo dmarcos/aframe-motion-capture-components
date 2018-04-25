@@ -15,8 +15,7 @@ AFRAME.registerSystem('motion-capture-replayer', {
 
     this.updateControllerListOriginal = trackedControlsSystem.updateControllerList.bind(
       trackedControlsSystem);
-    trackedControlsSystem.throttledUpdateControllerList = AFRAME.utils
-      .throttle(this.updateControllerList, 500, this);
+    trackedControlsSystem.throttledUpdateControllerList = this.updateControllerList.bind(this);
 
     // Wrap `tracked-controls` tick.
     trackedControlsComponent = AFRAME.components['tracked-controls'].Component.prototype;
@@ -41,24 +40,21 @@ AFRAME.registerSystem('motion-capture-replayer', {
   /**
    * Wrap `updateControllerList` to stub in the gamepads and emit `controllersupdated`.
    */
-  updateControllerList: function () {
+  updateControllerList: function (gamepads) {
     var i;
     var sceneEl = this.sceneEl;
     var trackedControlsSystem = sceneEl.systems['tracked-controls'];
-    var realGamepads = navigator.getGamepads && navigator.getGamepads();
-
-    this.updateControllerListOriginal(realGamepads);
+    gamepads = gamepads || []
+    // convert from read-only GamepadList
+    gamepads = Array.from(gamepads)
 
     this.gamepads.forEach(function (gamepad) {
-      if (trackedControlsSystem.controllers[gamepad.index]) { return; }
-      trackedControlsSystem.controllers[gamepad.index] = gamepad;
+      if (gamepads[gamepad.index]) { return; }
+      // to pass check in updateControllerListOriginal
+      gamepad.pose = true;
+      gamepads[gamepad.index] = gamepad;
     });
 
-    for (i = 0; i < trackedControlsSystem.controllers.length; i++) {
-      if (trackedControlsSystem.controllers[i]) { continue; }
-      trackedControlsSystem.controllers[i] = {id: '___', index: -1, hand: 'finger'};
-    }
-
-    sceneEl.emit('controllersupdated', undefined, false);
+    this.updateControllerListOriginal(gamepads);
   }
 });
