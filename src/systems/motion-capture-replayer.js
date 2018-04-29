@@ -12,9 +12,9 @@ AFRAME.registerSystem('motion-capture-replayer', {
     this.gamepads = [];
 
     // Wrap `updateControllerList`.
-
     this.updateControllerListOriginal = trackedControlsSystem.updateControllerList.bind(
       trackedControlsSystem);
+    this.throttledUpdateControllerListOriginal = trackedControlsSystem.throttledUpdateControllerList
     trackedControlsSystem.throttledUpdateControllerList = this.updateControllerList.bind(this);
 
     // Wrap `tracked-controls` tick.
@@ -29,7 +29,7 @@ AFRAME.registerSystem('motion-capture-replayer', {
     var trackedControlsSystem = this.sceneEl.systems['tracked-controls'];
     trackedControlsComponent.tick = trackedControlsComponent.trackedControlsTick;
     delete trackedControlsComponent.trackedControlsTick;
-    trackedControlsSystem.throttledUpdateControllerList = this.updateControllerListOriginal;
+    trackedControlsSystem.throttledUpdateControllerList = this.throttledUpdateControllerListOriginal;
   },
 
   trackedControlsTickWrapper: function (time, delta) {
