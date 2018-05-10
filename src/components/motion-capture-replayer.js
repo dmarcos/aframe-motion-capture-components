@@ -102,7 +102,7 @@ AFRAME.registerComponent('motion-capture-replayer', {
     if (data.gamepad) {
       this.gamepadData = data.gamepad;
       el.sceneEl.systems['motion-capture-replayer'].gamepads.push(data.gamepad);
-      el.emit('gamepadconnected');
+      el.sceneEl.systems['motion-capture-replayer'].updateControllerList();
     }
 
     el.emit('replayingstarted');
@@ -216,4 +216,5 @@ AFRAME.registerComponent('motion-capture-replayer', {
 function applyPose (el, pose) {
   el.setAttribute('position', pose.position);
   el.setAttribute('rotation', pose.rotation);
+  el.object3D.updateMatrix()
 };
