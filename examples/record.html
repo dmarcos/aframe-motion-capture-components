@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>A-Frame Motion Capture Components Record</title>
     <meta name="description" content="Motion Capture Components Record – A-Frame">
-    <script src="https://aframe.io/releases/0.6.1/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="js/build.js"></script>
     <script src="js/components/aabb-collider.js"></script>
     <script src="js/components/grab.js"></script>
@@ -30,8 +30,8 @@
                    material="color: #F2E646;"></a-mixin>
         </a-assets>
         <!-- Hands -->
-        <a-entity id="left" hand-controls="left" aabb-collider="objects: .cube;" grab></a-entity>
-        <a-entity id="right" hand-controls="right" aabb-collider="objects: .cube;" grab></a-entity>
+        <a-entity id="left" hand-controls="hand: left" aabb-collider="objects: .cube;" grab></a-entity>
+        <a-entity id="right" hand-controls="hand: right" aabb-collider="objects: .cube;" grab></a-entity>
 
         <!-- A-Frame cubes -->
         <a-entity position="0 0 -0.5">
@@ -45,7 +45,9 @@
           <a-entity class="cube" mixin="cube" position="0.60 0.45 0"></a-entity>
           <a-entity class="cube" mixin="cube" position="0.60 0.15 0"></a-entity>
 
-          <a-entity class="cube" mixin="cube" position="0.30 0.75 0"></a-entity> <a-entity class="cube" mixin="cube" position="0 0.75 0"></a-entity> <a-entity class="cube" mixin="cube" position="-0.30 0.75 0"></a-entity>
+          <a-entity class="cube" mixin="cube" position="0.30 0.75 0"></a-entity>
+          <a-entity class="cube" mixin="cube" position="0 0.75 0"></a-entity>
+          <a-entity class="cube" mixin="cube" position="-0.30 0.75 0"></a-entity>
 
           <a-entity class="cube" mixin="cube" position="-0.60 1.35 0"></a-entity>
           <a-entity class="cube" mixin="cube" position="-0.60 1.05 0"></a-entity>

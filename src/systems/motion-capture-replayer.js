@@ -5,8 +5,8 @@ AFRAME.registerSystem('motion-capture-replayer', {
     var trackedControlsSystem;
     var trackedControlsTick;
 
-    trackedControlsSystem = sceneEl.systems['tracked-controls'];
-    trackedControlsTick = AFRAME.components['tracked-controls'].Component.prototype.tick;
+    trackedControlsSystem = sceneEl.systems['tracked-controls-webxr'];
+    trackedControlsTick = AFRAME.components['tracked-controls-webxr'].Component.prototype.tick;
 
     // Gamepad data stored in recording and added here by `motion-capture-replayer` component.
     this.gamepads = [];
@@ -17,16 +17,16 @@ AFRAME.registerSystem('motion-capture-replayer', {
     this.throttledUpdateControllerListOriginal = trackedControlsSystem.throttledUpdateControllerList
     trackedControlsSystem.throttledUpdateControllerList = this.updateControllerList.bind(this);
 
-    // Wrap `tracked-controls` tick.
-    trackedControlsComponent = AFRAME.components['tracked-controls'].Component.prototype;
+    // Wrap `tracked-controls-webxr` tick.
+    trackedControlsComponent = AFRAME.components['tracked-controls-webxr'].Component.prototype;
     trackedControlsComponent.tick = this.trackedControlsTickWrapper;
     trackedControlsComponent.trackedControlsTick = trackedControlsTick;
   },
 
   remove: function () {
     // restore modified objects
-    var trackedControlsComponent = AFRAME.components['tracked-controls'].Component.prototype;
-    var trackedControlsSystem = this.sceneEl.systems['tracked-controls'];
+    var trackedControlsComponent = AFRAME.components['tracked-controls-webxr'].Component.prototype;
+    var trackedControlsSystem = this.sceneEl.systems['tracked-controls-webxr'];
     trackedControlsComponent.tick = trackedControlsComponent.trackedControlsTick;
     delete trackedControlsComponent.trackedControlsTick;
     trackedControlsSystem.throttledUpdateControllerList = this.throttledUpdateControllerListOriginal;
@@ -43,7 +43,7 @@ AFRAME.registerSystem('motion-capture-replayer', {
   updateControllerList: function (gamepads) {
     var i;
     var sceneEl = this.sceneEl;
-    var trackedControlsSystem = sceneEl.systems['tracked-controls'];
+    var trackedControlsSystem = sceneEl.systems['tracked-controls-webxr'];
     gamepads = gamepads || []
     // convert from read-only GamepadList
     gamepads = Array.from(gamepads)

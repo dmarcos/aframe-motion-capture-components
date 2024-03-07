@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>A-Frame Motion Capture Components Development</title>
     <meta name="description" content="Motion Capture Components Development – A-Frame">
-    <script src="https://aframe.io/releases/0.6.1/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="js/build.js"></script>
     <script src="js/components/aabb-collider.js"></script>
     <script src="js/components/grab.js"></script>
@@ -31,8 +31,8 @@
                    material="color: #F2E646;"></a-mixin>
         </a-assets>
         <!-- Hands -->
-        <a-entity id="left" vive-controls="hand: left" grab line="end: 0 0 -5" ui-raycaster="objects: .cube"></a-entity>
-        <a-entity id="right" vive-controls="hand: right" grab line="end: 0 0 -5" ui-raycaster="objects: .cube"></a-entity>
+        <a-entity id="left" hand-controls="hand: left" grab line="end: 0 0 -5" ui-raycaster="objects: .cube"></a-entity>
+        <a-entity id="right" hand-controls="hand: right" grab line="end: 0 0 -5" ui-raycaster="objects: .cube"></a-entity>
 
         <!-- A-Frame cubes -->
         <a-entity position="0 0 -1.0">
